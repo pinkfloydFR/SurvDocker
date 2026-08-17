@@ -1,31 +1,8 @@
-# SurvDocker central configuration
+# SurvDocker user configuration (minimal)
 #
-# This is the single file you should edit for the application behavior.
-# The values below are grouped by concern so it remains readable.
-
-app:
-  # HTTP listener used by Flask inside the container.
-  host: 0.0.0.0
-  # Internal port exposed to Traefik.
-  port: 8080
-  # Shared token for the explicit scan endpoint.
-  scan_token: change-me
-  # Traefik middleware name, injected from the environment in compose when needed.
-  traffic_middleware: ""
-  # Application timezone used for scheduling and report labels.
-  timezone: Europe/Paris
-
-loki:
-  # Loki service reachable by Docker DNS name inside the Compose network.
-  base_url: http://loki:3100
-  # Max seconds spent waiting for Loki responses.
-  query_timeout_seconds: 30
-  # Hard cap for the Loki query response size.
-  query_limit: 50000
-  # Label used by Alloy and the Loki query selector.
-  job_label: docker
-  # Loki filesystem retention in days.
-  retention_days: 30
+# This file contains only business-level knobs.
+# Docker/runtime infrastructure values (host, ports, Loki URL, Traefik chain,
+# Telegram endpoint, etc.) are taken from .env and docker-compose.yml.
 
 scan:
   # 1 = Monday, 7 = Sunday.
@@ -114,15 +91,3 @@ critical:
       - authelia_redis_df
     bookstack:
       - mariadb
-
-telegram:
-  # Enable only if you want immediate alerts for critical incidents.
-  enabled: false
-  # Telegram bot token, kept out of the code.
-  bot_token: ""
-  # Target chat ID.
-  chat_id: ""
-  # Optional Telegram thread ID.
-  thread_id: ""
-  # Telegram API base URL.
-  api_base_url: https://api.telegram.org

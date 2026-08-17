@@ -34,6 +34,10 @@ survdocker/data/*
 !survdocker/data/alloy/.gitkeep
 !survdocker/data/reports/.gitkeep
 
+# Generated runtime configs
+survdocker/system/*
+!survdocker/system/.gitkeep
+
 # Generated or temporary files
 *.log
 *.tmp

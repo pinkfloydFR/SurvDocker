@@ -24,17 +24,22 @@ Le site web écoute sur `0.0.0.0:8080` dans le conteneur et expose les routes `/
 ## Fichiers de configuration
 
 - `survdocker/config/survdocker.yml` : configuration centrale à éditer
-- `survdocker/config/alloy.alloy` : configuration Grafana Alloy
-- `survdocker/config/loki-config.yml` : configuration Grafana Loki
+- `survdocker/system/alloy.alloy` : configuration technique Alloy générée automatiquement
+- `survdocker/system/loki-config.yml` : configuration technique Loki générée automatiquement
 - `docker-compose.yml` : orchestration complète
 
-Le fichier `survdocker/config/survdocker.yml` est commenté et regroupe la configuration applicative, les filtres, le planificateur, le moniteur critique et Telegram.
+Le dossier `survdocker/config` contient uniquement la configuration utilisateur à modifier.
+Dans cette version minimale, `survdocker.yml` contient seulement les paramètres métier du scan, des filtres et du moniteur critique.
 
-Les fichiers `survdocker/config/loki-config.yml` et `survdocker/config/alloy.alloy` sont générés à partir de ce fichier central via la commande `python -m survdocker render-configs`.
+Les configurations techniques non destinées à être éditées sont générées dans `survdocker/system`.
+
+Les fichiers `survdocker/system/loki-config.yml` et `survdocker/system/alloy.alloy` sont générés à partir de ce fichier central via la commande `python -m survdocker render-configs`.
 
 Pour un lancement manuel, tu peux aussi exécuter `python start_survdocker.py` à la racine du projet.
 
 Le routage Traefik utilise `SURVDOCKER_HOSTNAME` pour le host public et `TRAEFIK_AUTH_MIDDLEWARE` pour chaîner tes middlewares, par exemple `my-geoblock@file,crowdsec-bouncer@docker,authelia_df@docker,sslheader@docker`.
+
+Les valeurs d’infrastructure Docker (hôte/port app, URL Loki, chaîne Traefik, secrets Telegram) sont gérées via `.env`.
 
 ## Aide au déploiement
 

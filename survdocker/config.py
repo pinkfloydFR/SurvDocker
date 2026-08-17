@@ -61,6 +61,7 @@ class Settings:
     root_dir: Path
     data_dir: Path
     config_dir: Path
+    runtime_config_dir: Path
     config_file: Path
     host: str
     port: int
@@ -97,8 +98,10 @@ def load_settings() -> Settings:
     root_dir = Path.cwd()
     data_dir = Path(os.environ.get("SURVDOCKER_DATA_DIR", root_dir / "survdocker" / "data"))
     config_dir = Path(os.environ.get("SURVDOCKER_CONFIG_DIR", root_dir / "survdocker" / "config"))
+    runtime_config_dir = Path(os.environ.get("SURVDOCKER_SYSTEM_CONFIG_DIR", root_dir / "survdocker" / "system"))
     config_file = Path(os.environ.get("SURVDOCKER_CONFIG_FILE", config_dir / "survdocker.yml"))
     config_dir.mkdir(parents=True, exist_ok=True)
+    runtime_config_dir.mkdir(parents=True, exist_ok=True)
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "reports").mkdir(parents=True, exist_ok=True)
 
@@ -160,6 +163,7 @@ def load_settings() -> Settings:
         root_dir=root_dir,
         data_dir=data_dir,
         config_dir=config_dir,
+        runtime_config_dir=runtime_config_dir,
         config_file=config_file,
         host=host,
         port=port,
@@ -175,8 +179,9 @@ def load_settings() -> Settings:
 
 
 def generated_config_paths(settings: Settings) -> GeneratedConfigPaths:
+    runtime_config_dir = getattr(settings, "runtime_config_dir", None) or getattr(settings, "config_dir")
     return GeneratedConfigPaths(
-        loki_config_path=settings.config_dir / "loki-config.yml",
-        alloy_config_path=settings.config_dir / "alloy.alloy",
+        loki_config_path=runtime_config_dir / "loki-config.yml",
+        alloy_config_path=runtime_config_dir / "alloy.alloy",
     )
 
