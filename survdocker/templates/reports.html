@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historique SurvDocker</title>
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f3f4ef; color: #142033; }
+    main { max-width: 1000px; margin: 0 auto; padding: 32px 18px; }
+    .item { background: white; border: 1px solid rgba(20,32,51,0.1); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+    a { color: #173d5a; text-decoration: none; font-weight: 700; }
+    .subtle { color: #5f6b7a; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Rapports historiques</h1>
+    {% for item in reports %}
+      <article class="item">
+        <h2 style="margin-bottom: 8px;">{{ item.path | replace('.json', '') }}</h2>
+        <p class="subtle">Conteneurs: {{ item.summary.container_count }} · Erreurs: {{ item.summary.error_container_count }}</p>
+        <p>
+          <a href="/reports/{{ item.path | replace('.json', '') }}">Consulter</a> ·
+          <a href="/reports/{{ item.path | replace('.json', '') }}.json">Télécharger JSON</a> ·
+          <a href="/reports/{{ item.path | replace('.json', '') }}.txt">Télécharger texte</a>
+        </p>
+      </article>
+    {% endfor %}
+  </main>
+</body>
+</html>

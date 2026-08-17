@@ -1,0 +1,128 @@
+# SurvDocker central configuration
+#
+# This is the single file you should edit for the application behavior.
+# The values below are grouped by concern so it remains readable.
+
+app:
+  # HTTP listener used by Flask inside the container.
+  host: 0.0.0.0
+  # Internal port exposed to Traefik.
+  port: 8080
+  # Shared token for the explicit scan endpoint.
+  scan_token: change-me
+  # Traefik middleware name, injected from the environment in compose when needed.
+  traffic_middleware: ""
+  # Application timezone used for scheduling and report labels.
+  timezone: Europe/Paris
+
+loki:
+  # Loki service reachable by Docker DNS name inside the Compose network.
+  base_url: http://loki:3100
+  # Max seconds spent waiting for Loki responses.
+  query_timeout_seconds: 30
+  # Hard cap for the Loki query response size.
+  query_limit: 50000
+  # Label used by Alloy and the Loki query selector.
+  job_label: docker
+  # Loki filesystem retention in days.
+  retention_days: 30
+
+scan:
+  # 1 = Monday, 7 = Sunday.
+  day: 1
+  # Daily scan time in HH:MM.
+  time: 06:00
+  # Look-back window used for the weekly report.
+  lookback: 7d
+  # Limits memory usage when a container is very noisy.
+  max_log_lines_per_container: 50000
+  # Max exact examples stored in each grouped error.
+  max_examples_per_error: 100
+  # Max top-level error groups kept per container.
+  max_error_groups_per_container: 5
+  # How many weekly reports to keep on disk.
+  retention_reports: 4
+
+filters:
+  # Can disable the default ignore rules one by one by setting this to false.
+  enable_default_ignore: true
+  # Can disable the default keep rules one by one by setting this to false.
+  enable_default_keep: true
+  # Can disable the default warning rules one by one by setting this to false.
+  enable_default_warning: true
+  # Normal traffic that must not appear as incidents.
+  ignore_patterns:
+    - 'status_code=(200|204|301|302|401)'
+    - 'robots\.txt'
+    - 'healthcheck'
+    - 'readiness'
+    - 'liveness'
+    - '/api/health'
+    - '/ping'
+    - 'Access to .* is not authorized'
+    - 'unauthorized'
+  # Signals that should generally be preserved as incidents.
+  keep_patterns:
+    - 'error'
+    - 'fatal'
+    - 'panic'
+    - 'exception'
+    - 'failed'
+    - 'failure'
+    - 'timeout'
+    - 'connection refused'
+    - 'permission denied'
+    - 'database locked'
+    - 'out of memory'
+    - 'crashed'
+    - 'restart'
+  # Configuration and migration warnings shown separately in the report.
+  warning_patterns:
+    - 'deprecated'
+    - 'warning'
+    - 'invalid configuration'
+    - 'unknown field'
+
+critical:
+  # Containers that must be ignored by the critical monitor.
+  ignored_containers:
+    - ancien_conteneur
+    - test_temporaire
+  # Containers considered critical for immediate alerting.
+  critical_containers:
+    - traefik
+    - authelia_df
+    - authelia_pf
+    - redis_df
+    - redis_pf
+    - postgres
+    - mariadb
+  # Thresholds and cooldown values for Telegram alerting.
+  critical_alerts:
+    enabled: true
+    error_threshold: 3
+    error_window_seconds: 300
+    restart_threshold: 3
+    restart_window_seconds: 600
+    notification_cooldown_seconds: 3600
+    notify_resolution: false
+  # Known service dependencies used to explain likely root causes.
+  dependencies:
+    authelia_pf:
+      - authelia_redis_pf
+    authelia_df:
+      - authelia_redis_df
+    bookstack:
+      - mariadb
+
+telegram:
+  # Enable only if you want immediate alerts for critical incidents.
+  enabled: false
+  # Telegram bot token, kept out of the code.
+  bot_token: ""
+  # Target chat ID.
+  chat_id: ""
+  # Optional Telegram thread ID.
+  thread_id: ""
+  # Telegram API base URL.
+  api_base_url: https://api.telegram.org
