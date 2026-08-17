@@ -1,7 +1,7 @@
 # SurvDocker
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!! EN COURS DE DEVELOPPEMENT, NE PAS DEPLOYER !!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+EN COURS DE DEVELOPPEMENT, NE PAS DEPLOYER
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 SurvDocker est une solution locale pour analyser les logs Docker via Grafana Alloy et Loki, générer un rapport hebdomadaire persistant, et afficher le dernier résultat dans une interface Flask protégée par Traefik et Authelia.
 
