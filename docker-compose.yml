@@ -1,6 +1,6 @@
 services:
   loki:
-    image: grafana/loki:3.0.0
+    image: grafana/loki:latest
     container_name: survdocker_loki
     command: -config.file=/etc/loki/config.yml
     restart: unless-stopped
@@ -16,7 +16,7 @@ services:
       - survdocker
 
   alloy:
-    image: grafana/alloy:1.4.0
+    image: grafana/alloy:latest
     container_name: survdocker_alloy
     command: run /etc/alloy/config.alloy
     restart: unless-stopped
