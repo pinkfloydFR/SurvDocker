@@ -15,6 +15,12 @@ def render_alloy_config(config_path: str, output_dir: str = "survdocker/data") -
     - loki.process with forward_to
     - loki.write with proper endpoint
     """
+    # Handle both string path and Settings object
+    if hasattr(config_path, 'config_file'):
+        config_path = str(config_path.config_file)
+    else:
+        config_path = str(config_path)
+    
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
