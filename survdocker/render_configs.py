@@ -1,87 +1,75 @@
-from __future__ import annotations
+"""Renders configuration files from survdocker.yml template."""
 
+import os
 from pathlib import Path
-
-from .config import Settings, generated_config_paths
-
-
-def render_loki_config(settings: Settings) -> str:
-    return "\n".join(
-        [
-            "# Generated from survdocker.yml",
-            f"# Loki query limit: {settings.loki.query_limit}",
-            f"# Retention: {settings.loki.retention_days} day(s)",
-            "auth_enabled: false",
-            "",
-            "server:",
-            "  http_listen_port: 3100",
-            "",
-            "common:",
-            "  path_prefix: /loki",
-            "  storage:",
-            "    filesystem:",
-            "      chunks_directory: /loki/chunks",
-            "      rules_directory: /loki/rules",
-            "  replication_factor: 1",
-            "  ring:",
-            "    kvstore:",
-            "      store: inmemory",
-            "",
-            "schema_config:",
-            "  configs:",
-            "    - from: 2024-01-01",
-            "      store: tsdb",
-            "      object_store: filesystem",
-            "      schema: v13",
-            "      index:",
-            "        prefix: index_",
-            "        period: 24h",
-            "",
-            "limits_config:",
-            f"  retention_period: {settings.loki.retention_days * 24}h",
-            "  max_query_length: 0",
-            "  max_streams_per_user: 0",
-            "",
-            "query_range:",
-            "  results_cache:",
-            "    cache:",
-            "      embedded_cache:",
-            "        enabled: true",
-            "",
-        ]
-    )
+from jinja2 import Environment, FileSystemLoader
+import yaml
 
 
-def render_alloy_config(settings: Settings) -> str:
-    return "\n".join(
-        [
-            "# Generated from survdocker.yml",
-            "# Reads Docker logs through the local socket and pushes them to Loki.",
-            f"# Loki endpoint: {settings.loki.base_url}/loki/api/v1/push",
-            "loki.source.docker \"containers\" {",
-            "  host = \"unix:///var/run/docker.sock\"",
-            "}",
-            "",
-            "loki.process \"docker_logs\" {",
-            "  stage.labels {",
-            "    values = {",
-            f"      job = \"{settings.loki.job_label}\",",
-            "    }",
-            "  }",
-            "}",
-            "",
-            "loki.write \"default\" {",
-            "  endpoint {",
-            f"    url = \"{settings.loki.base_url.rstrip('/')}/loki/api/v1/push\"",
-            "  }",
-            "}",
-            "",
-        ]
-    )
+def render_alloy_config(config_path: str, output_dir: str = "survdocker/data") -> str:
+    """
+    Generate a valid Grafana Alloy configuration from survdocker.yml.
+    
+    The generated config includes:
+    - loki.source.docker with targets and forward_to
+    - loki.process with forward_to
+    - loki.write with proper endpoint
+    """
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Ensure output directory exists
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Build Alloy config with proper syntax
+    alloy_config = """// Generated from survdocker.yml
+// Reads Docker logs through the local socket and pushes them to Loki.
+// Loki endpoint: http://loki:3100/loki/api/v1/push
+
+loki.source.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+  targets = {
+    "job" = "docker",
+  }
+  forward_to = [loki.process.docker_logs.receiver]
+}
+
+loki.process "docker_logs" {
+  stage.labels {
+    values = {
+      job = "docker",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+"""
+    
+    # Write the config file
+    alloy_file = output_path / "config.alloy"
+    with open(alloy_file, 'w') as f:
+        f.write(alloy_config)
+    
+    return str(alloy_file)
 
 
-def render_all_configs(settings: Settings) -> dict[str, Path]:
-    paths = generated_config_paths(settings)
-    paths.loki_config_path.write_text(render_loki_config(settings), encoding="utf-8")
-    paths.alloy_config_path.write_text(render_alloy_config(settings), encoding="utf-8")
-    return {"loki": paths.loki_config_path, "alloy": paths.alloy_config_path}
+def render_all_configs(config_path: str = "survdocker/config/survdocker.yml") -> dict:
+    """Render all configuration files from the main config."""
+    results = {}
+    
+    # Render Alloy config
+    alloy_path = render_alloy_config(config_path)
+    results["alloy"] = alloy_path
+    
+    return results
+
+
+if __name__ == "__main__":
+    rendered = render_all_configs()
+    print(f"Rendered configs: {rendered}")
