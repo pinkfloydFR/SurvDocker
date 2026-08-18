@@ -6,7 +6,7 @@ from jinja2 import Environment, FileSystemLoader
 import yaml
 
 
-def render_alloy_config(config_path: str, output_dir: str = "survdocker/data") -> str:
+def render_alloy_config(config_path: str | Path, output_dir: str = "survdocker/data") -> str:
     """
     Generate a valid Grafana Alloy configuration from survdocker.yml.
     
@@ -15,13 +15,10 @@ def render_alloy_config(config_path: str, output_dir: str = "survdocker/data") -
     - loki.process with forward_to
     - loki.write with proper endpoint
     """
-    # Handle both string path and Settings object
-    if hasattr(config_path, 'config_file'):
-        config_path = str(config_path.config_file)
-    else:
-        config_path = str(config_path)
+    # Convert to string if it's a Path object
+    config_path_str = str(config_path)
     
-    with open(config_path, 'r') as f:
+    with open(config_path_str, 'r') as f:
         config = yaml.safe_load(f)
     
     # Ensure output directory exists
@@ -65,12 +62,12 @@ loki.write "default" {
     return str(alloy_file)
 
 
-def render_all_configs(config_path: str = "survdocker/config/survdocker.yml") -> dict:
+def render_all_configs(settings) -> dict:
     """Render all configuration files from the main config."""
     results = {}
     
-    # Render Alloy config
-    alloy_path = render_alloy_config(config_path)
+    # Render Alloy config - settings is a Settings object with config_file attribute
+    alloy_path = render_alloy_config(settings.config_file)
     results["alloy"] = alloy_path
     
     return results
