@@ -3,57 +3,108 @@ services:
     image: grafana/loki:latest
     container_name: survdocker_loki
     command: -config.file=/etc/loki/config.yml
-  main:
-    build: .
-    container_name: survdocker_main
     restart: unless-stopped
-    ports:
-      - "8080:8080"
     volumes:
-      - ./survdocker/config/survdocker.yml:/app/survdocker/config/survdocker.yml:ro
-      - ./survdocker/data:/app/survdocker/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - TZ=Europe/Paris
-    depends_on:
-      - loki
-      - alloy
-    networks:
-      - survdocker
-
-  loki:
-    image: grafana/loki:latest
-    container_name: survdocker_loki
-    restart: unless-stopped
-    command: -config.file=/etc/loki/config.yml
-    volumes:
-      - loki-data:/loki
+      - ${SURVDOCKER_SYSTEM_CONFIG_DIR}/loki-config.yml:/etc/loki/config.yml:ro
+      - ${SURVDOCKER_DATA_DIR}/loki:/loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     networks:
       - survdocker
 
   alloy:
     image: grafana/alloy:latest
     container_name: survdocker_alloy
+    command: run /etc/alloy/config.alloy
     restart: unless-stopped
-    command:
-      - run
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --storage.path=/var/lib/alloy
-      - /etc/alloy/config.alloy
     volumes:
-      - ./survdocker/data/config.alloy:/etc/alloy/config.alloy:ro
+      - ${SURVDOCKER_SYSTEM_CONFIG_DIR}/alloy.alloy:/etc/alloy/config.alloy:ro
+      - ${SURVDOCKER_DATA_DIR}/alloy:/var/lib/alloy
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - ALLOY_DEVEL_LOOKBACK_BUFFER_DURATION=24h
     depends_on:
       - loki
     networks:
       - survdocker
 
-  volumes:
-    loki-data:
-      driver: local
+  survdocker:
+    build: .
+    container_name: survdocker_main
+    command: ["python", "-m", "survdocker", "web"]
+    restart: unless-stopped
+    environment:
+      SURVDOCKER_DATA_DIR: /data
+      SURVDOCKER_CONFIG_DIR: /app/survdocker/config
+      SURVDOCKER_CONFIG_FILE: /app/survdocker/config/survdocker.yml
+      SURVDOCKER_SCAN_TOKEN: ${SURVDOCKER_SCAN_TOKEN}
+      SURVDOCKER_HOST: ${SURVDOCKER_HOST}
+      SURVDOCKER_PORT: ${SURVDOCKER_PORT}
+      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      TRAEFIK_AUTH_MIDDLEWARE: ${TRAEFIK_AUTH_MIDDLEWARE}
+    volumes:
+      - ${SURVDOCKER_DATA_DIR}:/data
+      - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
+    depends_on:
+      - loki
+    networks:
+      - survdocker
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.survdocker.rule=Host(`${SURVDOCKER_HOSTNAME}`)
+      - traefik.http.routers.survdocker.entrypoints=websecure
+      - traefik.http.routers.survdocker.service=survdocker
+      - traefik.http.routers.survdocker.tls=true
+      - traefik.http.routers.survdocker.middlewares=${TRAEFIK_AUTH_MIDDLEWARE}
+      - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.services.survdocker.loadbalancer.server.port=8080
 
-  networks:
-    survdocker:
-      driver: bridge
+  survdocker-scheduler:
+    build: .
+    container_name: survdocker_scheduler
+    command: ["python", "-m", "survdocker", "scheduler"]
+    restart: unless-stopped
+    environment:
+      SURVDOCKER_DATA_DIR: /data
+      SURVDOCKER_CONFIG_DIR: /app/survdocker/config
+      SURVDOCKER_CONFIG_FILE: /app/survdocker/config/survdocker.yml
+      LOKI_BASE_URL: ${LOKI_BASE_URL}
+    volumes:
+      - ${SURVDOCKER_DATA_DIR}:/data
+      - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
+    depends_on:
+      - loki
+    networks:
+      - survdocker
+
+  survdocker-critical-monitor:
+    build: .
+    container_name: survdocker_critical_monitor
+    command: ["python", "-m", "survdocker", "critical-monitor"]
+    restart: unless-stopped
+    environment:
+      SURVDOCKER_DATA_DIR: /data
+      SURVDOCKER_CONFIG_DIR: /app/survdocker/config
+      SURVDOCKER_CONFIG_FILE: /app/survdocker/config/survdocker.yml
+      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      TELEGRAM_THREAD_ID: ${TELEGRAM_THREAD_ID}
+    volumes:
+      - ${SURVDOCKER_DATA_DIR}:/data
+      - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - survdocker
+
+networks:
+  survdocker:
+    name: survdocker
+  traefik:
+    external: true
