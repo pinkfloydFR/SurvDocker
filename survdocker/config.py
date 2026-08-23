@@ -40,7 +40,6 @@ class TelegramSettings:
 
 @dataclass(frozen=True)
 class AppriseSettings:
-    enabled: bool
     url: str
     tag: str | None
 
@@ -153,7 +152,6 @@ def load_settings() -> Settings:
         api_base_url=os.environ.get("TELEGRAM_API_BASE_URL", telegram_config.get("api_base_url", "https://api.telegram.org")),
     )
     apprise = AppriseSettings(
-        enabled=_env_bool("APPRISE_ENABLED", apprise_config.get("enabled", False)),
         url=os.environ.get("APPRISE_URL", apprise_config.get("url", "")),
         tag=os.environ.get("APPRISE_TAG", apprise_config.get("tag")),
     )

@@ -40,7 +40,7 @@ def create_app() -> Flask:
             "scan_state": scan_state.get("status", "unknown"),
             "scan_timestamp": scan_state.get("timestamp"),
             "telegram_enabled": settings.telegram.enabled,
-            "apprise_enabled": settings.apprise.enabled,
+            "apprise_enabled": bool(settings.apprise.url),
         }), 200
 
     @app.get("/")

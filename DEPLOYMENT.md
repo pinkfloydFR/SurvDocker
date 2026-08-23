@@ -24,7 +24,7 @@ Le fichier central contient déjà des commentaires pour expliquer chaque param�
 - `SURVDOCKER_DATA_DIR`, `SURVDOCKER_CONFIG_DIR`, `SURVDOCKER_SYSTEM_CONFIG_DIR`, `SURVDOCKER_CONFIG_FILE` : chemins utilisés dans le compose.
 - `LOKI_BASE_URL` : URL interne de Loki.
 - `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_THREAD_ID` : variables d’alerte si Telegram est actif.
-- `APPRISE_ENABLED`, `APPRISE_URL`, `APPRISE_TAG` : alternative à Telegram — pointe vers une URL de notify d’une instance Apprise API auto-hébergée (ex. `https://apprise.example.com/notify/<clé>/`) au lieu de gérer un bot token/chat id. Les deux canaux peuvent être actifs en même temps ; chaque alerte est alors envoyée sur tous les canaux configurés.
+- `APPRISE_URL`, `APPRISE_TAG` : alternative à Telegram — pointe vers une URL de notify d’une instance Apprise API auto-hébergée (ex. `https://apprise.example.com/notify/<clé>/`) au lieu de gérer un bot token/chat id. Actif dès que `APPRISE_URL` est renseigné ; laisser vide pour désactiver. Les deux canaux peuvent être actifs en même temps ; chaque alerte est alors envoyée sur tous les canaux configurés.
 
 ## 3. Démarrage de la stack
 
