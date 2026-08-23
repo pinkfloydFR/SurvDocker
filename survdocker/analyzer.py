@@ -119,7 +119,7 @@ def report_summary(report: dict) -> dict:
     return {
         "generated_at": report.get("generated_at"),
         "period": report.get("period", {}),
-        "container_count": total_containers,
+        "container_count": report.get("scanned_container_count", total_containers),
         "error_container_count": sum(1 for container in containers if container.get("error_groups")),
         "group_count": total_groups,
     }

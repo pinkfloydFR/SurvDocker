@@ -10,6 +10,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8080
+EXPOSE 60000
 
 CMD ["python", "-m", "survdocker.web"]

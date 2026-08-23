@@ -6,17 +6,17 @@
   <title>SurvDocker</title>
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f3f4ef;
-      --panel: rgba(255, 255, 255, 0.82);
-      --text: #142033;
-      --muted: #5f6b7a;
-      --line: rgba(20, 32, 51, 0.1);
-      --accent: #173d5a;
-      --accent-2: #b45309;
-      --good: #146c43;
-      --danger: #b42318;
-      --shadow: 0 20px 60px rgba(20, 32, 51, 0.12);
+      color-scheme: dark;
+      --bg: #0b0f17;
+      --panel: rgba(255, 255, 255, 0.06);
+      --text: #e6e9ef;
+      --muted: #93a0b4;
+      --line: rgba(255, 255, 255, 0.1);
+      --accent: #5b9bd5;
+      --accent-2: #d78c3d;
+      --good: #3fb96a;
+      --danger: #e5534b;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
       --radius: 18px;
     }
     * { box-sizing: border-box; }
@@ -25,19 +25,13 @@
       font-family: Arial, Helvetica, sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at top left, rgba(23, 61, 90, 0.16), transparent 30%),
-        radial-gradient(circle at top right, rgba(180, 83, 9, 0.12), transparent 24%),
-        linear-gradient(180deg, #faf8f2 0%, var(--bg) 100%);
+        radial-gradient(circle at top left, rgba(91, 155, 213, 0.14), transparent 30%),
+        radial-gradient(circle at top right, rgba(215, 140, 61, 0.1), transparent 24%),
+        linear-gradient(180deg, #0d1220 0%, var(--bg) 100%);
       min-height: 100vh;
     }
-    .shell { max-width: 1220px; margin: 0 auto; padding: 28px 18px 56px; }
-    .hero {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 18px;
-      align-items: stretch;
-      margin-bottom: 18px;
-    }
+    .shell { width: 100%; margin: 0 auto; padding: 28px 32px 56px; }
+    .hero { margin-bottom: 18px; }
     .panel {
       background: var(--panel);
       backdrop-filter: blur(14px);
@@ -46,39 +40,77 @@
       box-shadow: var(--shadow);
       padding: 22px;
     }
+    .header-panel { padding: 14px 22px; }
+    .header-row {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px;
+    }
+    .header-row + .header-row { margin-top: 10px; }
     h1, h2, h3, p { margin-top: 0; }
     h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin-bottom: 8px; letter-spacing: -0.03em; }
     .subtle { color: var(--muted); line-height: 1.5; }
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .stat { padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.9); border: 1px solid var(--line); }
-    .stat strong { display: block; font-size: 1.5rem; margin-bottom: 4px; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .stats-inline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 22px; font-size: .92rem; }
+    .stats-inline strong { margin-left: 6px; color: var(--text); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
       border: 0; border-radius: 999px; padding: 11px 16px; text-decoration: none;
       font-weight: 700; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;
     }
     .btn:hover { transform: translateY(-1px); }
-    .btn-primary { background: var(--accent); color: white; box-shadow: 0 10px 24px rgba(23, 61, 90, 0.22); }
-    .btn-secondary { background: #fff; color: var(--accent); border: 1px solid var(--line); }
+    .btn-primary { background: var(--accent); color: #0b0f17; box-shadow: 0 10px 24px rgba(91, 155, 213, 0.25); }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--line); }
     .layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    .container-card { padding: 18px; border-radius: 18px; background: rgba(255,255,255,0.88); border: 1px solid var(--line); }
+    .container-card { padding: 18px; border-radius: 18px; background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-left: 4px solid var(--accent); }
+    .container-card.c0 { border-left-color: #5b9bd5; background: rgba(91, 155, 213, 0.06); }
+    .container-card.c1 { border-left-color: #d78c3d; background: rgba(215, 140, 61, 0.06); }
+    .container-card.c2 { border-left-color: #3fb96a; background: rgba(63, 185, 106, 0.06); }
+    .container-card.c3 { border-left-color: #a97fe0; background: rgba(169, 127, 224, 0.06); }
+    .container-card.c4 { border-left-color: #e5534b; background: rgba(229, 83, 75, 0.06); }
+    .container-card.c5 { border-left-color: #2fb8c6; background: rgba(47, 184, 198, 0.06); }
     .container-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 14px; }
-    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .84rem; background: rgba(23, 61, 90, 0.08); color: var(--accent); }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .84rem; background: rgba(91, 155, 213, 0.14); color: var(--accent); }
+    .container-link { color: inherit; text-decoration: none; border-bottom: 1px dashed var(--muted); }
+    .container-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
     .group { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
     .group:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
-    .meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0; color: var(--muted); font-size: .95rem; }
-    pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #f8fafc; padding: 14px; border-radius: 14px; overflow-x: auto; }
-    .copy-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin: 14px 0 8px; }
-    .copy-btn { background: var(--accent-2); color: white; }
-    .copied { color: var(--good); font-weight: 700; display: none; }
+    .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin: 0; color: var(--muted); font-size: .95rem; }
+    .meta-level { margin-left: auto; color: var(--text); font-weight: 700; white-space: nowrap; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #f8fafc; padding: 14px 48px 14px 14px; border-radius: 14px; overflow-x: auto; margin: 0; }
+    .example-wrap { position: relative; margin-top: 6px; }
+    .icon-copy {
+      position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+      background: rgba(255,255,255,0.08); color: #f8fafc; cursor: pointer;
+    }
+    .icon-copy:hover { background: rgba(255,255,255,0.18); }
+    .icon-copy svg { width: 15px; height: 15px; }
+    .back-to-top {
+      position: fixed; right: 22px; bottom: 22px; width: 46px; height: 46px; padding: 0;
+      border: none; border-radius: 50%; background: var(--accent); color: #0b0f17; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+      opacity: 0; transform: translateY(18px); pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 50;
+    }
+    .back-to-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .back-to-top:hover { transform: translateY(-2px); }
+    .back-to-top svg { width: 20px; height: 20px; }
+    .copied { position: absolute; top: 15px; right: 48px; color: var(--good); font-weight: 700; font-size: .84rem; display: none; }
     .empty { padding: 20px; color: var(--muted); }
-    @media (max-width: 900px) {
-      .hero { grid-template-columns: 1fr; }
-      .stats, .meta { grid-template-columns: 1fr 1fr; }
+    .scan-progress { display: none; flex: 1 1 100%; margin-top: 10px; }
+    .scan-progress.active { display: block; }
+    .progress-track { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 6px; }
+    .progress-bar { height: 100%; width: 30%; border-radius: 999px; background: var(--accent); animation: scan-slide 1.1s ease-in-out infinite; }
+    .progress-bar.done { animation: none; width: 100%; background: var(--good); }
+    .progress-bar.failed { animation: none; width: 100%; background: var(--danger); }
+    @keyframes scan-slide {
+      0% { margin-left: -30%; }
+      100% { margin-left: 100%; }
     }
     @media (max-width: 640px) {
-      .stats, .meta { grid-template-columns: 1fr; }
+      .meta-level { margin-left: 0; }
       .shell { padding-inline: 12px; }
     }
   </style>
@@ -86,61 +118,63 @@
 <body>
   <main class="shell">
     <section class="hero">
-      <div class="panel">
-        <div class="badge">SurvDocker</div>
-        <h1>Dernier rapport Docker</h1>
-        <p class="subtle">Rapport hebdomadaire persistant, basé sur Loki, avec filtrage déterministe des faux positifs et conservation des lignes exactes.</p>
-        <div class="actions">
-          <a class="btn btn-secondary" href="/reports">Historique</a>
-          <button class="btn btn-primary" id="refreshButton" type="button">Actualiser la page</button>
-          <button class="btn btn-primary" id="scanButton" type="button">Lancer un scan maintenant</button>
+      <div class="panel header-panel">
+        <div class="header-row">
+          <div class="badge">SurvDocker</div>
+          {% if summary %}
+            <div class="stats-inline">
+              <span class="subtle">Génération<strong>{{ summary.generated_at | format_datetime }}</strong></span>
+              <span class="subtle">Conteneurs analysés<strong>{{ summary.container_count }}</strong></span>
+              <span class="subtle">Avec erreurs<strong>{{ summary.error_container_count }}</strong></span>
+              <span class="subtle">Groupes d’erreurs<strong>{{ summary.group_count }}</strong></span>
+            </div>
+          {% else %}
+            <span class="subtle">Aucun rapport n’est encore disponible. Le site démarre même si Loki est temporairement indisponible.</span>
+          {% endif %}
         </div>
-      </div>
-      <div class="panel">
-        {% if summary %}
-          <div class="stats">
-            <div class="stat"><strong>{{ summary.generated_at }}</strong><span class="subtle">Génération</span></div>
-            <div class="stat"><strong>{{ summary.container_count }}</strong><span class="subtle">Conteneurs analysés</span></div>
-            <div class="stat"><strong>{{ summary.error_container_count }}</strong><span class="subtle">Conteneurs avec erreurs</span></div>
-            <div class="stat"><strong>{{ summary.group_count }}</strong><span class="subtle">Groupes d’erreurs</span></div>
+        <div class="header-row">
+          <div class="actions">
+            <a class="btn btn-secondary" href="/reports">Historique</a>
+            <button class="btn btn-primary" id="refreshButton" type="button">Actualiser la page</button>
+            <button class="btn btn-primary" id="scanButton" type="button">Lancer un scan maintenant</button>
           </div>
-        {% else %}
-          <h2>Statut</h2>
-          <p class="subtle">Aucun rapport n’est encore disponible. Le site démarre même si Loki est temporairement indisponible.</p>
-        {% endif %}
+          <div class="scan-progress" id="scanProgressWrap">
+            <div class="progress-track"><div class="progress-bar" id="scanProgressBar"></div></div>
+            <span class="subtle" id="scanProgressLabel"></span>
+          </div>
+        </div>
       </div>
     </section>
 
     {% if report and report.containers %}
       <section class="layout">
         {% for container in report.containers %}
-          <article class="container-card">
+          <article class="container-card c{{ loop.index0 % 6 }}">
             <div class="container-head">
               <div>
-                <h2 style="margin-bottom: 4px;">{{ container.name }}</h2>
-                <div class="subtle">Top des erreurs sur la période analysée</div>
+                <h2 style="margin-bottom: 4px;"><a class="container-link" href="/containers/{{ container.name | urlencode }}/logs?start={{ report.period.start | urlencode }}&amp;end={{ report.period.end | urlencode }}" target="_blank" rel="noopener" title="Ouvrir le log complet de ce conteneur">{{ container.name }}</a></h2>
               </div>
               <div class="badge">{{ container.error_groups | length }} motifs</div>
             </div>
             {% for group in container.error_groups %}
               <div class="group">
-                <div class="copy-row">
-                  <div>
-                    <h3 style="margin-bottom: 4px;">{{ group.normalized_message }}</h3>
-                    <div class="subtle">Niveau {{ group.level }} · {{ group.occurrences }} occurrence(s)</div>
-                  </div>
-                  <div>
-                    <button class="btn copy-btn" type="button" data-copy='{{ format_report_copy(group, report) | tojson }}'>Copier l’erreur exacte</button>
-                    <span class="copied">Copié !</span>
-                  </div>
-                </div>
                 <div class="meta">
-                  <div><strong>Première apparition</strong><br>{{ group.first_seen }}</div>
-                  <div><strong>Dernière apparition</strong><br>{{ group.last_seen }}</div>
-                  <div><strong>Exemples</strong><br>{{ group.examples | length }}</div>
-                  <div><strong>Complet</strong><br>{{ 'oui' if group.examples_complete else 'échantillon' }}</div>
+                  <div><strong>Première apparition :</strong> {{ group.first_seen | format_datetime }}</div>
+                  <div><strong>Dernière apparition :</strong> {{ group.last_seen | format_datetime }}</div>
+                  <div><strong>Exemples :</strong> {{ group.examples | length }}</div>
+                  <div><strong>Complet :</strong> {{ 'oui' if group.examples_complete else 'échantillon' }}</div>
+                  <div class="meta-level">Niveau {{ group.level }} · {{ group.occurrences }} occurrence(s)</div>
                 </div>
-                <pre>{{ group.examples | join('\n') }}</pre>
+                <div class="example-wrap">
+                  <pre>{{ group.examples[:5] | join('\n') }}</pre>
+                  <span class="copied">Copié !</span>
+                  <button class="icon-copy" type="button" data-copy='{{ group.examples | join("\n") | tojson }}' title="Copier l’erreur exacte" aria-label="Copier l’erreur exacte">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                </div>
+                {% if group.examples | length > 5 %}
+                  <div class="subtle">+{{ group.examples | length - 5 }} autre(s) exemple(s) — utiliser l’icône de copie ou l’export JSON/texte pour la liste complète.</div>
+                {% endif %}
               </div>
             {% endfor %}
           </article>
@@ -152,18 +186,93 @@
       </section>
     {% endif %}
   </main>
+  <button class="back-to-top" id="backToTop" type="button" title="Remonter en haut" aria-label="Remonter en haut">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+  </button>
   <script>
     const refreshButton = document.getElementById('refreshButton');
     const scanButton = document.getElementById('scanButton');
+    const scanProgressWrap = document.getElementById('scanProgressWrap');
+    const scanProgressBar = document.getElementById('scanProgressBar');
+    const scanProgressLabel = document.getElementById('scanProgressLabel');
     refreshButton?.addEventListener('click', () => window.location.reload());
+
+    const SCAN_POLL_INTERVAL_MS = 1500;
+    const SCAN_TIMEOUT_MS = 10 * 60 * 1000;
+
+    async function fetchHealth() {
+      const response = await fetch('/health', { cache: 'no-store' });
+      return response.json();
+    }
+
+    function setProgressState(state, label) {
+      scanProgressWrap.classList.add('active');
+      scanProgressBar.classList.remove('done', 'failed');
+      if (state === 'done') scanProgressBar.classList.add('done');
+      if (state === 'failed') scanProgressBar.classList.add('failed');
+      scanProgressLabel.textContent = label;
+    }
+
     scanButton?.addEventListener('click', async () => {
+      scanButton.disabled = true;
+      scanButton.textContent = 'Scan en cours…';
+      setProgressState('running', 'Scan en cours, interrogation de Loki…');
+
+      let baselineTimestamp = null;
+      try {
+        const baseline = await fetchHealth();
+        baselineTimestamp = baseline.scan_timestamp;
+      } catch {
+        // ignore, we'll rely on seeing a "running" state instead
+      }
+
       const response = await fetch('/scan-now', {
         method: 'POST',
         headers: { 'X-SurvDocker-Token': '{{ settings.scan_token }}' },
       });
-      if (response.ok) {
-        scanButton.textContent = 'Scan lancé';
+      if (!response.ok) {
+        setProgressState('failed', "Échec du déclenchement du scan.");
+        scanButton.disabled = false;
+        scanButton.textContent = 'Lancer un scan maintenant';
+        return;
       }
+
+      const startedAt = Date.now();
+      let sawRunning = false;
+      const poll = async () => {
+        if (Date.now() - startedAt > SCAN_TIMEOUT_MS) {
+          setProgressState('failed', 'Le scan prend plus de temps que prévu, vérifie les logs du conteneur.');
+          scanButton.disabled = false;
+          scanButton.textContent = 'Lancer un scan maintenant';
+          return;
+        }
+        let health;
+        try {
+          health = await fetchHealth();
+        } catch {
+          window.setTimeout(poll, SCAN_POLL_INTERVAL_MS);
+          return;
+        }
+        if (health.scan_state === 'running') {
+          sawRunning = true;
+          window.setTimeout(poll, SCAN_POLL_INTERVAL_MS);
+          return;
+        }
+        const isNewResult = sawRunning || health.scan_timestamp !== baselineTimestamp;
+        if (!isNewResult) {
+          window.setTimeout(poll, SCAN_POLL_INTERVAL_MS);
+          return;
+        }
+        if (health.scan_state === 'ok') {
+          setProgressState('done', 'Scan terminé, actualisation…');
+          window.setTimeout(() => window.location.reload(), 900);
+        } else {
+          setProgressState('failed', "Échec du scan (Loki injoignable ?). Voir /health pour le détail.");
+          scanButton.disabled = false;
+          scanButton.textContent = 'Lancer un scan maintenant';
+        }
+      };
+      window.setTimeout(poll, SCAN_POLL_INTERVAL_MS);
     });
     async function copyText(text) {
       try {
@@ -193,6 +302,16 @@
         }
       });
     });
+
+    const backToTop = document.getElementById('backToTop');
+    if (backToTop) {
+      window.addEventListener('scroll', () => {
+        backToTop.classList.toggle('visible', window.scrollY > 400);
+      }, { passive: true });
+      backToTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
   </script>
 </body>
 </html>

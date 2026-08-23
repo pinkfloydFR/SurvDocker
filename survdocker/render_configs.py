@@ -37,7 +37,7 @@ discovery.relabel "containers" {
 
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/(.*)"
+    regex         = "/?(.*)"
     target_label  = "container"
   }
 }
@@ -51,6 +51,16 @@ loki.source.docker "containers" {
 }
 
 loki.process "docker_logs" {
+  // Drop orphan lines ingested before discovery.docker has resolved a
+  // container's name (e.g. during Alloy's own startup) - these carry no
+  // "container" label and would otherwise surface as a fake "docker" container.
+  stage.match {
+    selector = "{container=\\"\\"}"
+    stage.drop {
+      expression = ".*"
+    }
+  }
+
   forward_to = [loki.write.default.receiver]
 }
 
@@ -82,6 +92,8 @@ auth_enabled: false
 
 server:
   http_listen_port: 3100
+  grpc_server_max_recv_msg_size: 67108864
+  grpc_server_max_send_msg_size: 67108864
 
 common:
   path_prefix: /loki

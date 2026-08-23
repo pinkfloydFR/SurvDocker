@@ -39,8 +39,8 @@ Ordre attendu dans Compose :
 
 ## 4. Vérifications utiles
 
-- L’application Flask doit écouter sur `0.0.0.0:8080` dans le conteneur.
-- Traefik doit router vers le port interne `8080`.
+- L’application Flask doit écouter sur `0.0.0.0:60000` dans le conteneur.
+- Traefik doit router vers le port interne `60000`.
 - Le réseau externe `traefik` doit exister sur le serveur Docker.
 - Le volume `survdocker/data` doit être persistant.
 - Le scan hebdomadaire ne doit pas se déclencher à chaque visite de `/`.

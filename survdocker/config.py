@@ -114,7 +114,7 @@ def load_settings() -> Settings:
     critical_config = config.get("critical", {})
 
     host = os.environ.get("SURVDOCKER_HOST", app_config.get("host", "0.0.0.0"))
-    port = int(os.environ.get("SURVDOCKER_PORT", app_config.get("port", 8080)))
+    port = int(os.environ.get("SURVDOCKER_PORT", app_config.get("port", 60000)))
     scan_token = os.environ.get("SURVDOCKER_SCAN_TOKEN", app_config.get("scan_token", "change-me"))
     traffic_middleware = os.environ.get("TRAEFIK_AUTH_MIDDLEWARE", app_config.get("traffic_middleware", ""))
     timezone = os.environ.get("TIMEZONE", app_config.get("timezone", "Europe/Paris"))

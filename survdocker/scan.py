@@ -52,6 +52,8 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
         "state": "empty",
     }
 
+    save_json(settings.data_dir / "last-scan.json", {"status": "running", "timestamp": now.isoformat()})
+
     try:
         client = LokiClient(settings.loki.base_url, timeout_seconds=settings.loki.query_timeout_seconds, query_limit=settings.loki.query_limit)
         raw_entries = client.query_range(default_query(settings.loki.job_label), int(start.timestamp() * 1_000_000_000), int(end.timestamp() * 1_000_000_000))
@@ -65,6 +67,7 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
             per_container_counts[container_name] += 1
             entries.append(LogEntry(container=container_name, raw=entry.raw, timestamp=entry.timestamp))
         report = build_report(entries, config=filter_config, max_groups_per_container=settings.scan.max_error_groups_per_container, max_examples=settings.scan.max_examples_per_error)
+        report["scanned_container_count"] = len(per_container_counts)
         report["generated_at"] = now.isoformat()
         report["period"] = {"start": start.isoformat(), "end": end.isoformat()}
         report["state"] = "ok"

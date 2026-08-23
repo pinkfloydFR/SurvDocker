@@ -22,7 +22,7 @@ python start_survdocker.py
 
 Le script unique génère d’abord les fichiers dérivés puis lance `docker compose up -d --build`.
 
-Le site web écoute sur `0.0.0.0:8080` dans le conteneur et expose les routes `/`, `/reports`, `/health` et `/scan-now`.
+Le site web écoute sur `0.0.0.0:60000` dans le conteneur et expose les routes `/`, `/reports`, `/health` et `/scan-now`.
 
 ## Fichiers de configuration
 
