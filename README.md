@@ -26,6 +26,8 @@ Le script unique génère d’abord les fichiers dérivés puis lance `docker co
 
 Le site web écoute sur `0.0.0.0:60000` dans le conteneur et expose les routes `/`, `/reports`, `/health`, `/scan-now` et `/test-alert`.
 
+Cliquer sur le nom d’un conteneur dans le tableau de bord ouvre `/containers/<nom>/logs` dans un nouvel onglet : cette page interroge Loki en direct et propose un menu déroulant pour filtrer par période (période du rapport, 5 minutes, 1 heure, 24h, 48h, ou toutes les données conservées).
+
 ## Fichiers de configuration
 
 - `survdocker/config/survdocker.yml` : configuration centrale à éditer
