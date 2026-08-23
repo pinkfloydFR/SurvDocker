@@ -6,6 +6,7 @@ import time as time_module
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .scan import run_scan
+from .storage import save_json
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ def compute_next_run(now: datetime, day: int, schedule_time: str, timezone_name:
 def scheduler_loop(settings, stop_callback=None) -> None:
     while True:
         now = datetime.now(timezone.utc)
+        save_json(settings.data_dir / "scheduler-heartbeat.json", {"timestamp": now.isoformat()})
         plan = compute_next_run(now, settings.scan.day, settings.scan.time, settings.scan.timezone)
         wait_seconds = max(0.0, (plan.next_run_utc - now).total_seconds())
         if wait_seconds:

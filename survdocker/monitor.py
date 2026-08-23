@@ -262,6 +262,7 @@ def critical_monitor_loop(settings, state_path: Path, interval_seconds: int | No
     interval = interval_seconds if interval_seconds is not None else int(os.environ.get("CRITICAL_MONITOR_INTERVAL_SECONDS", 60))
     while True:
         run_critical_monitor(settings, {}, state_path)
+        save_json(settings.data_dir / "critical-monitor-heartbeat.json", {"timestamp": datetime.now(timezone.utc).isoformat()})
         time.sleep(interval)
 
 

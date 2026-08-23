@@ -11,6 +11,7 @@ from .config import load_settings
 from .loki import LokiClient
 from .scan import compute_period, run_scan
 from .storage import latest_report_path, list_reports, load_report
+from .telegram import send_message
 
 
 def _format_datetime(value: str | None) -> str:
@@ -117,6 +118,18 @@ def create_app() -> Flask:
         lines = [f"{entry.timestamp.isoformat() if entry.timestamp else '?'}  {entry.raw}" for entry in entries]
         body = "\n".join(lines) if lines else f"(aucune ligne pour {container_name} sur cette période)"
         return Response(body, mimetype="text/plain")
+
+    @app.post("/test-alert")
+    def test_alert():
+        if request.headers.get("X-SurvDocker-Token") != settings.scan_token:
+            abort(403)
+        if not settings.telegram.enabled or not settings.telegram.bot_token or not settings.telegram.chat_id:
+            return jsonify({"ok": False, "message": "Telegram non configuré (TELEGRAM_ENABLED/BOT_TOKEN/CHAT_ID)."}), 400
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        text = f"🔔 Test d'alerte SurvDocker — {now} UTC. Si tu reçois ce message, les alertes Telegram fonctionnent."
+        result = send_message(settings.telegram.api_base_url, settings.telegram.bot_token, settings.telegram.chat_id, text, settings.telegram.thread_id)
+        return jsonify({"ok": result.ok, "status_code": result.status_code, "message": result.message}), (200 if result.ok else 502)
 
     @app.post("/scan-now")
     def scan_now():

@@ -30,6 +30,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
+    healthcheck:
+      # No curl/wget in the alloy image; use bash's /dev/tcp against Alloy's own readiness endpoint.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/12345 && printf 'GET /-/ready HTTP/1.0\r\n\r\n' >&3 && head -1 <&3 | grep -q 200"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - survdocker
 
@@ -49,11 +56,21 @@ services:
       SURVDOCKER_PORT: ${SURVDOCKER_PORT}
       LOKI_BASE_URL: ${LOKI_BASE_URL}
       TRAEFIK_AUTH_MIDDLEWARE: ${TRAEFIK_AUTH_MIDDLEWARE}
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      TELEGRAM_THREAD_ID: ${TELEGRAM_THREAD_ID}
     volumes:
       - ${SURVDOCKER_DATA_DIR}:/data
       - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
     depends_on:
       - loki
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:60000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
     networks:
       - survdocker
       - traefik
@@ -83,6 +100,12 @@ services:
       - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
     depends_on:
       - loki
+    healthcheck:
+      test: ["CMD", "python", "-m", "survdocker.heartbeat_check", "/data/scheduler-heartbeat.json", "180"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - survdocker
 
@@ -106,6 +129,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
+    healthcheck:
+      test: ["CMD", "python", "-m", "survdocker.heartbeat_check", "/data/critical-monitor-heartbeat.json", "180"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - survdocker
 
