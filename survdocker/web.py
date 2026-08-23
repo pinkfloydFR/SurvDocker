@@ -39,7 +39,7 @@ def create_app() -> Flask:
             "report_exists": report is not None,
             "scan_state": scan_state.get("status", "unknown"),
             "scan_timestamp": scan_state.get("timestamp"),
-            "telegram_enabled": settings.telegram.enabled,
+            "telegram_enabled": bool(settings.telegram.bot_token and settings.telegram.chat_id),
             "apprise_enabled": bool(settings.apprise.url),
         }), 200
 

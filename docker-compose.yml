@@ -54,9 +54,8 @@ services:
       SURVDOCKER_SCAN_TOKEN: ${SURVDOCKER_SCAN_TOKEN}
       SURVDOCKER_HOST: ${SURVDOCKER_HOST}
       SURVDOCKER_PORT: ${SURVDOCKER_PORT}
-      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      LOKI_BASE_URL: http://loki:3100
       TRAEFIK_AUTH_MIDDLEWARE: ${TRAEFIK_AUTH_MIDDLEWARE}
-      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       TELEGRAM_THREAD_ID: ${TELEGRAM_THREAD_ID}
@@ -96,7 +95,7 @@ services:
       SURVDOCKER_DATA_DIR: /data
       SURVDOCKER_CONFIG_DIR: /app/survdocker/config
       SURVDOCKER_CONFIG_FILE: /app/survdocker/config/survdocker.yml
-      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      LOKI_BASE_URL: http://loki:3100
     volumes:
       - ${SURVDOCKER_DATA_DIR}:/data
       - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
@@ -120,8 +119,7 @@ services:
       SURVDOCKER_DATA_DIR: /data
       SURVDOCKER_CONFIG_DIR: /app/survdocker/config
       SURVDOCKER_CONFIG_FILE: /app/survdocker/config/survdocker.yml
-      LOKI_BASE_URL: ${LOKI_BASE_URL}
-      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED}
+      LOKI_BASE_URL: http://loki:3100
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       TELEGRAM_THREAD_ID: ${TELEGRAM_THREAD_ID}

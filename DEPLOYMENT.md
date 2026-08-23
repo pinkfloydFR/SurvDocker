@@ -18,12 +18,10 @@ Le fichier central contient déjà des commentaires pour expliquer chaque param�
 - `app.scan_token` : protège la route `/scan-now`.
 - `SURVDOCKER_HOSTNAME` : nom public exposé par Traefik.
 - `TRAEFIK_AUTH_MIDDLEWARE` : chaîne de middlewares Traefik, par exemple `my-geoblock@file,crowdsec-bouncer@docker,authelia_df@docker,sslheader@docker`.
-- `LOKI_BASE_URL` : doit rester sur le nom DNS Docker `http://loki:3100`.
-- `telegram.enabled` : activer seulement si Telegram est réellement configuré.
 - `critical.critical_alerts` : ajuste les seuils et le cooldown des alertes.
 - `SURVDOCKER_DATA_DIR`, `SURVDOCKER_CONFIG_DIR`, `SURVDOCKER_SYSTEM_CONFIG_DIR`, `SURVDOCKER_CONFIG_FILE` : chemins utilisés dans le compose.
-- `LOKI_BASE_URL` : URL interne de Loki.
-- `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_THREAD_ID` : variables d’alerte si Telegram est actif.
+- `LOKI_BASE_URL` : fixée en dur sur `http://loki:3100` dans `docker-compose.yml` (nom DNS Docker du service Loki), plus besoin de la définir dans `.env`.
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_THREAD_ID` : actif dès que `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID` sont tous les deux renseignés ; laisser l’un des deux vide pour désactiver.
 - `APPRISE_URL`, `APPRISE_TAG` : alternative à Telegram — pointe vers une URL de notify d’une instance Apprise API auto-hébergée (ex. `https://apprise.example.com/notify/<clé>/`) au lieu de gérer un bot token/chat id. Actif dès que `APPRISE_URL` est renseigné ; laisser vide pour désactiver. Les deux canaux peuvent être actifs en même temps ; chaque alerte est alors envoyée sur tous les canaux configurés.
 
 ## 3. Démarrage de la stack

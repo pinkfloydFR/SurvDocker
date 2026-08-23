@@ -31,7 +31,6 @@ class ScanSettings:
 
 @dataclass(frozen=True)
 class TelegramSettings:
-    enabled: bool
     bot_token: str
     chat_id: str
     thread_id: str | None
@@ -94,13 +93,6 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def _env_bool(name: str, default: bool = False) -> bool:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def load_settings() -> Settings:
     root_dir = Path.cwd()
     data_dir = Path(os.environ.get("SURVDOCKER_DATA_DIR", root_dir / "survdocker" / "data"))
@@ -145,7 +137,6 @@ def load_settings() -> Settings:
         retention_reports=int(os.environ.get("REPORT_RETENTION_COUNT", scan_config.get("retention_reports", 4))),
     )
     telegram = TelegramSettings(
-        enabled=_env_bool("TELEGRAM_ENABLED", telegram_config.get("enabled", False)),
         bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", telegram_config.get("bot_token", "")),
         chat_id=os.environ.get("TELEGRAM_CHAT_ID", telegram_config.get("chat_id", "")),
         thread_id=os.environ.get("TELEGRAM_THREAD_ID", telegram_config.get("thread_id")),
