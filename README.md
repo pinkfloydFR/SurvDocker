@@ -24,7 +24,7 @@ python start_survdocker.py
 
 Le script unique génère d’abord les fichiers dérivés puis lance `docker compose up -d --build`.
 
-Le site web écoute sur `0.0.0.0:60000` dans le conteneur et expose les routes `/`, `/reports`, `/health` et `/scan-now`.
+Le site web écoute sur `0.0.0.0:60000` dans le conteneur et expose les routes `/`, `/reports`, `/health`, `/scan-now` et `/test-alert`.
 
 ## Fichiers de configuration
 
@@ -44,7 +44,7 @@ Pour un lancement manuel, tu peux aussi exécuter `python start_survdocker.py` �
 
 Le routage Traefik utilise `SURVDOCKER_HOSTNAME` pour le host public et `TRAEFIK_AUTH_MIDDLEWARE` pour chaîner tes middlewares, par exemple `my-geoblock@file,crowdsec-bouncer@docker,authelia_df@docker,sslheader@docker`.
 
-Les valeurs d’infrastructure Docker (hôte/port app, URL Loki, chaîne Traefik, secrets Telegram) sont gérées via `.env`.
+Les valeurs d’infrastructure Docker (hôte/port app, chaîne Traefik, secrets Telegram et/ou Apprise) sont gérées via `.env` — `LOKI_BASE_URL` est fixée en dur dans `docker-compose.yml` sur le nom DNS interne `http://loki:3100`.
 
 ## Aide au déploiement
 
