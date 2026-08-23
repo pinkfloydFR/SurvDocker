@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-SurvDocker is under active development — the README explicitly warns `EN COURS DE DEVELOPPEMENT, NE PAS DEPLOYER` (in development, do not deploy). It is a local Flask app that analyzes Docker logs shipped through Grafana Alloy into Loki, produces a weekly persisted report, and shows the latest report behind Traefik + Authelia.
+SurvDocker is still under active development, though the README's earlier `EN COURS DE DEVELOPPEMENT, NE PAS DEPLOYER` (in development, do not deploy) warning banner was removed on 2026-08-23. It is a local Flask app that analyzes Docker logs shipped through Grafana Alloy into Loki, produces a weekly persisted report, and shows the latest report behind Traefik (optionally chained with Authelia and other middlewares via `TRAEFIK_AUTH_MIDDLEWARE`).
 
 ## Commands
 
@@ -17,7 +17,7 @@ pytest tests/test_scan.py::test_scan_respects_per_container_limit -q  # run a si
 python -m survdocker web               # run the Flask app directly (host/port from settings)
 python -m survdocker scan-once         # run one scan against Loki and persist a report
 python -m survdocker scheduler         # blocking loop that triggers scan-once on the configured weekly schedule
-python -m survdocker critical-monitor  # one-shot poll of the Docker API for critical container state, sends Telegram alerts
+python -m survdocker critical-monitor  # one-shot poll of the Docker API for critical container state, sends Telegram and/or Apprise alerts
 python -m survdocker render-configs    # regenerate survdocker/system/{loki-config.yml,alloy.alloy} from survdocker.yml
 
 python start_survdocker.py             # render configs, then `docker compose up -d --build` for the full stack
@@ -27,13 +27,13 @@ There is no real Docker/Loki integration available in the dev environment — on
 
 ## Architecture
 
-**Settings are the spine of the app.** `survdocker/config.py:load_settings()` reads `survdocker/config/survdocker.yml` (business/scan/filter config) and layers environment variables on top for anything infrastructure-related (hosts, ports, Loki URL, Traefik middleware chain, Telegram secrets — env vars always win). The resulting frozen `Settings` dataclass is passed explicitly into every other module; there is no global state. This is the file to read first when tracing how a value flows from config to behavior.
+**Settings are the spine of the app.** `survdocker/config.py:load_settings()` reads `survdocker/config/survdocker.yml` (business/scan/filter config) and layers environment variables on top for anything infrastructure-related (hosts, ports, Loki URL, Traefik middleware chain, Telegram/Apprise secrets — env vars always win). Telegram and Apprise each derive their own "enabled" state from whether their required fields are non-empty (`TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID`, or `APPRISE_URL`) rather than a separate `*_ENABLED` flag — both channels can be configured at once and `notifications.py` fans an alert out to whichever are set. The resulting frozen `Settings` dataclass is passed explicitly into every other module; there is no global state. This is the file to read first when tracing how a value flows from config to behavior.
 
 **Two config domains, deliberately separated:**
 - `survdocker/config/survdocker.yml` — user-edited business config (scan schedule/lookback, log filters, critical-monitor thresholds/dependencies). Not meant to contain infra values.
 - `survdocker/system/loki-config.yml` and `survdocker/system/alloy.alloy` — machine-generated technical configs, produced by `survdocker/render_configs.py` from the central YAML + settings, and mounted read-only into the `loki`/`alloy` containers. Regenerate with `python -m survdocker render-configs` after changing anything that affects them; never hand-edit them.
 
-Infra values (Traefik host/middleware chain, `LOKI_BASE_URL`, Telegram secrets, container-visible directories) live in `.env` / `docker-compose.yml`, not in `survdocker.yml` — see DEPLOYMENT.md.
+Infra values (Traefik host/middleware chain, Telegram/Apprise secrets, container-visible directories) live in `.env` / `docker-compose.yml`, not in `survdocker.yml` — see DEPLOYMENT.md. `LOKI_BASE_URL` specifically is hardcoded to `http://loki:3100` directly in `docker-compose.yml` (the Docker-internal DNS name for the `loki` service never changes across environments), not sourced from `.env` at all.
 
 **Scan pipeline** (`scan.py` orchestrates; each stage is independently testable):
 1. `loki.py` `LokiClient.query_range` pulls raw log lines for the configured lookback window from Loki's HTTP API.
@@ -44,7 +44,7 @@ Infra values (Traefik host/middleware chain, `LOKI_BASE_URL`, Telegram secrets, 
 
 Loki being unreachable is a handled outcome, not an exception path to avoid: `run_scan` catches failures and persists a `state: "loki_unavailable"` report plus `last-scan.json`, so `/health` and the UI can reflect it instead of crashing.
 
-**Critical monitor** (`monitor.py`) is a separate concern from the weekly scan: it talks to the Docker Engine API directly over the Unix socket (hand-rolled minimal HTTP client — `_connect_unix_http`, no docker SDK) to catch containers in `CRITICAL_STATES`, restart-loop spikes, or dependency-failure log patterns, and pushes Telegram alerts with a per-alert-key cooldown tracked in `data/critical-state.json`. It also sends a recovery message when a previously active alert key disappears. `run_critical_monitor` itself does one poll and returns — continuous polling comes from `critical_monitor_loop` (sleeps `CRITICAL_MONITOR_INTERVAL_SECONDS`, default 60s, between polls), which is what `__main__.py`'s `critical-monitor` subcommand actually calls. Don't call `run_critical_monitor` directly from a long-running entrypoint — without the loop wrapper the process exits immediately and the container just crash-loops under `restart: unless-stopped`. This runs as its own process/container (`survdocker-critical-monitor` in compose), independent of `web` and `scheduler`.
+**Critical monitor** (`monitor.py`) is a separate concern from the weekly scan: it talks to the Docker Engine API directly over the Unix socket (hand-rolled minimal HTTP client — `_connect_unix_http`, no docker SDK) to catch containers in `CRITICAL_STATES`, restart-loop spikes, or dependency-failure log patterns, and pushes Telegram and/or Apprise alerts with a per-alert-key cooldown tracked in `data/critical-state.json`. It also sends a recovery message when a previously active alert key disappears. `run_critical_monitor` itself does one poll and returns — continuous polling comes from `critical_monitor_loop` (sleeps `CRITICAL_MONITOR_INTERVAL_SECONDS`, default 60s, between polls), which is what `__main__.py`'s `critical-monitor` subcommand actually calls. Don't call `run_critical_monitor` directly from a long-running entrypoint — without the loop wrapper the process exits immediately and the container just crash-loops under `restart: unless-stopped`. This runs as its own process/container (`survdocker-critical-monitor` in compose), independent of `web` and `scheduler`.
 
 **Scheduler** (`scheduler.py`) is a simple blocking loop, not cron: `compute_next_run` figures out the next `scan.day`/`scan.time` occurrence in `scan.timezone`, sleeps in ≤60s increments, then calls `run_scan` directly. Runs as its own container so the weekly scan doesn't depend on someone hitting the web app.
 
