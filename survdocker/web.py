@@ -14,9 +14,20 @@ from .notifications import notifications_configured, notify
 from .storage import latest_report_path, list_reports, load_report
 
 
-def _format_datetime(value: str | None) -> str:
+LOG_RANGE_OPTIONS = [
+    ("5m", "Dernières 5 minutes"),
+    ("1h", "Dernière heure"),
+    ("24h", "Dernières 24h"),
+    ("48h", "Dernières 48h"),
+    ("all", "Toutes"),
+]
+
+
+def _format_datetime(value: str | datetime | None) -> str:
     if not value:
         return "-"
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
@@ -95,30 +106,56 @@ def create_app() -> Flask:
 
     @app.get("/containers/<container_name>/logs")
     def container_logs(container_name: str):
+        range_param = request.args.get("range")
         start_param = request.args.get("start")
         end_param = request.args.get("end")
+
+        range_lookbacks = {"5m": "5m", "1h": "1h", "24h": "24h", "48h": "48h", "all": f"{settings.loki.retention_days}d"}
+        report_period = None
         start = end = None
-        if start_param and end_param:
+        if range_param in range_lookbacks:
+            start, end = compute_period(datetime.now(timezone.utc), range_lookbacks[range_param], settings.scan.timezone)
+        elif start_param and end_param:
             try:
                 start = datetime.fromisoformat(start_param)
                 end = datetime.fromisoformat(end_param)
+                report_period = {"start": start_param, "end": end_param}
+                range_param = None
             except ValueError:
                 start = end = None
         if start is None or end is None:
             start, end = compute_period(datetime.now(timezone.utc), settings.scan.lookback, settings.scan.timezone)
+            range_param = None
+
+        if report_period:
+            default_option_label = f"Période du rapport ({start:%d/%m %H:%M} → {end:%d/%m %H:%M})"
+        else:
+            default_option_label = f"Par défaut ({settings.scan.lookback})"
 
         escaped_name = container_name.replace("\\", "\\\\").replace('"', '\\"')
         query = f'{{job="{settings.loki.job_label}", container="{escaped_name}"}}'
         client = LokiClient(settings.loki.base_url, timeout_seconds=settings.loki.query_timeout_seconds, query_limit=settings.loki.query_limit)
+        error = None
+        lines: list[str] = []
         try:
             entries = client.query_range(query, int(start.timestamp() * 1_000_000_000), int(end.timestamp() * 1_000_000_000))
+            entries.sort(key=lambda entry: entry.timestamp or datetime.min.replace(tzinfo=timezone.utc))
+            lines = [f"{entry.timestamp.isoformat() if entry.timestamp else '?'}  {entry.raw}" for entry in entries]
         except Exception as exc:
-            return Response(f"Impossible de récupérer les logs depuis Loki: {exc}", status=502, mimetype="text/plain")
+            error = f"Impossible de récupérer les logs depuis Loki : {exc}"
 
-        entries.sort(key=lambda entry: entry.timestamp or datetime.min.replace(tzinfo=timezone.utc))
-        lines = [f"{entry.timestamp.isoformat() if entry.timestamp else '?'}  {entry.raw}" for entry in entries]
-        body = "\n".join(lines) if lines else f"(aucune ligne pour {container_name} sur cette période)"
-        return Response(body, mimetype="text/plain")
+        return render_template(
+            "container_logs.html",
+            container_name=container_name,
+            lines=lines,
+            error=error,
+            start=start,
+            end=end,
+            range_param=range_param,
+            report_period=report_period,
+            range_options=LOG_RANGE_OPTIONS,
+            default_option_label=default_option_label,
+        )
 
     @app.post("/test-alert")
     def test_alert():

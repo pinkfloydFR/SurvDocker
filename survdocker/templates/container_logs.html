@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SurvDocker — {{ container_name }}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f17;
+      --panel: rgba(255, 255, 255, 0.06);
+      --text: #e6e9ef;
+      --muted: #93a0b4;
+      --line: rgba(255, 255, 255, 0.1);
+      --accent: #5b9bd5;
+      --danger: #e5534b;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(91, 155, 213, 0.14), transparent 30%),
+        linear-gradient(180deg, #0d1220 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+    .shell { width: 100%; margin: 0 auto; padding: 28px 32px 56px; }
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .subtle { color: var(--muted); line-height: 1.5; }
+    .header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 14px; }
+    label { color: var(--muted); font-size: .9rem; }
+    select {
+      background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--line);
+      border-radius: 999px; padding: 9px 14px; font-weight: 600; cursor: pointer;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 0; border-radius: 999px; padding: 9px 16px; text-decoration: none;
+      font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--line);
+    }
+    pre {
+      white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #f8fafc;
+      padding: 16px; border-radius: 14px; overflow-x: auto; margin: 0; max-height: 75vh; overflow-y: auto;
+    }
+    .error { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel">
+      <div class="header-row">
+        <div>
+          <h1>{{ container_name }}</h1>
+          <span class="subtle">Période affichée : {{ start | format_datetime }} → {{ end | format_datetime }}</span>
+        </div>
+        <a class="btn" href="/">Retour au tableau de bord</a>
+      </div>
+      <form class="filter-row" method="get">
+        <label for="range">Filtrer par période :</label>
+        <select name="range" id="range" onchange="this.form.submit()">
+          <option value="" {{ 'selected' if not range_param else '' }}>{{ default_option_label }}</option>
+          {% for value, label in range_options %}
+            <option value="{{ value }}" {{ 'selected' if range_param == value else '' }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if report_period %}
+          <input type="hidden" name="start" value="{{ report_period.start }}">
+          <input type="hidden" name="end" value="{{ report_period.end }}">
+        {% endif %}
+      </form>
+    </section>
+    <section class="panel">
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% elif lines %}
+        <pre>{{ lines | join('\n') }}</pre>
+      {% else %}
+        <p class="subtle">Aucune ligne pour {{ container_name }} sur cette période.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
