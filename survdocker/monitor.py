@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 import socket
+import time
 from pathlib import Path
 from typing import Any
 
@@ -255,6 +256,13 @@ def run_critical_monitor(settings, monitor_config: dict[str, Any], state_path: P
             state.setdefault("active_alerts", {})[alert.key] = {"last_sent_at": now.isoformat(), "container": alert.container, "alert_type": alert.alert_type, "first_seen": alert.first_seen, "last_seen": alert.last_seen}
     save_json(state_path, state)
     return {"status": "ok", "alerts": [alert.__dict__ for alert in alerts], "sent": sent_alerts, "resolved": recovery_alerts}
+
+
+def critical_monitor_loop(settings, state_path: Path, interval_seconds: int | None = None) -> None:
+    interval = interval_seconds if interval_seconds is not None else int(os.environ.get("CRITICAL_MONITOR_INTERVAL_SECONDS", 60))
+    while True:
+        run_critical_monitor(settings, {}, state_path)
+        time.sleep(interval)
 
 
 def load_monitor_config(path: Path) -> dict[str, Any]:

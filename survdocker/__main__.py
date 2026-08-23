@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from .config import load_settings
-from .monitor import run_critical_monitor
+from .monitor import critical_monitor_loop
 from .render_configs import render_all_configs
 from .scan import run_scan
 from .scheduler import scheduler_loop
@@ -23,7 +23,7 @@ def main() -> None:
     elif args.command == "scheduler":
         scheduler_loop(settings)
     elif args.command == "critical-monitor":
-        run_critical_monitor(settings, {}, settings.data_dir / "critical-state.json")
+        critical_monitor_loop(settings, settings.data_dir / "critical-state.json")
     elif args.command == "render-configs":
         paths = render_all_configs(settings)
         for name, path in paths.items():

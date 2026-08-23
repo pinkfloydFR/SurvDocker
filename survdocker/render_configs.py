@@ -1,8 +1,6 @@
 """Renders configuration files from survdocker.yml template."""
 
-import os
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
 import yaml
 
 
@@ -30,20 +28,29 @@ def render_alloy_config(config_path: str | Path, output_dir: str = "survdocker/d
 // Reads Docker logs through the local socket and pushes them to Loki.
 // Loki endpoint: http://loki:3100/loki/api/v1/push
 
-loki.source.docker "containers" {
+discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
-  targets = {
-    "job" = "docker",
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
   }
-  forward_to = [loki.process.docker_logs.receiver]
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.containers.rules
+  labels        = {"job" = "docker"}
+  forward_to    = [loki.process.docker_logs.receiver]
 }
 
 loki.process "docker_logs" {
-  stage.labels {
-    values = {
-      job = "docker",
-    }
-  }
   forward_to = [loki.write.default.receiver]
 }
 
@@ -54,22 +61,83 @@ loki.write "default" {
 }
 """
     
-    # Write the config file
-    alloy_file = output_path / "config.alloy"
+    # Write the config file (docker-compose mounts this as alloy.alloy)
+    alloy_file = output_path / "alloy.alloy"
     with open(alloy_file, 'w') as f:
         f.write(alloy_config)
     
     return str(alloy_file)
 
 
+def render_loki_config(settings, output_dir: str = "survdocker/system") -> str:
+    """Generate the Loki server configuration from central settings."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    retention_hours = int(settings.loki.retention_days) * 24
+    loki_config = f"""# Generated from survdocker.yml
+# Loki query limit: {settings.loki.query_limit}
+# Retention: {settings.loki.retention_days} day(s)
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: {retention_hours}h
+  max_query_length: 0
+  max_streams_per_user: 0
+  max_entries_limit_per_query: {settings.loki.query_limit}
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+"""
+
+    loki_file = output_path / "loki-config.yml"
+    with open(loki_file, "w") as f:
+        f.write(loki_config)
+
+    return str(loki_file)
+
+
 def render_all_configs(settings) -> dict:
     """Render all configuration files from the main config."""
     results = {}
-    
-    # Render Alloy config - settings is a Settings object with config_file attribute
-    alloy_path = render_alloy_config(settings.config_file)
+
+    # Both configs must land in runtime_config_dir (survdocker/system), which is what
+    # docker-compose actually mounts into the loki/alloy containers.
+    output_dir = str(getattr(settings, "runtime_config_dir", None) or Path("survdocker/system"))
+
+    alloy_path = render_alloy_config(settings.config_file, output_dir=output_dir)
     results["alloy"] = alloy_path
-    
+
+    loki_path = render_loki_config(settings, output_dir=output_dir)
+    results["loki"] = loki_path
+
     return results
 
 
