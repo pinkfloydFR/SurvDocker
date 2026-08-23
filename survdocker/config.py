@@ -39,6 +39,13 @@ class TelegramSettings:
 
 
 @dataclass(frozen=True)
+class AppriseSettings:
+    enabled: bool
+    url: str
+    tag: str | None
+
+
+@dataclass(frozen=True)
 class FilterSettings:
     ignore_patterns: list[str]
     keep_patterns: list[str]
@@ -70,6 +77,7 @@ class Settings:
     loki: LokiSettings
     scan: ScanSettings
     telegram: TelegramSettings
+    apprise: AppriseSettings
     filters: FilterSettings
     critical: CriticalSettings
     timezone: str
@@ -110,6 +118,7 @@ def load_settings() -> Settings:
     loki_config = config.get("loki", {})
     scan_config = config.get("scan", {})
     telegram_config = config.get("telegram", {})
+    apprise_config = config.get("apprise", {})
     filters_config = config.get("filters", {})
     critical_config = config.get("critical", {})
 
@@ -143,6 +152,11 @@ def load_settings() -> Settings:
         thread_id=os.environ.get("TELEGRAM_THREAD_ID", telegram_config.get("thread_id")),
         api_base_url=os.environ.get("TELEGRAM_API_BASE_URL", telegram_config.get("api_base_url", "https://api.telegram.org")),
     )
+    apprise = AppriseSettings(
+        enabled=_env_bool("APPRISE_ENABLED", apprise_config.get("enabled", False)),
+        url=os.environ.get("APPRISE_URL", apprise_config.get("url", "")),
+        tag=os.environ.get("APPRISE_TAG", apprise_config.get("tag")),
+    )
 
     filters = FilterSettings(
         ignore_patterns=list(filters_config.get("ignore_patterns", [])),
@@ -172,6 +186,7 @@ def load_settings() -> Settings:
         loki=loki,
         scan=scan,
         telegram=telegram,
+        apprise=apprise,
         filters=filters,
         critical=critical,
         timezone=timezone,

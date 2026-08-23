@@ -11,8 +11,8 @@ from typing import Any
 
 import yaml
 
+from .notifications import notifications_configured, notify
 from .storage import load_json, save_json
-from .telegram import send_message
 
 
 CRITICAL_STATES = {"exited", "dead", "restarting", "unhealthy"}
@@ -224,7 +224,7 @@ def run_critical_monitor(settings, monitor_config: dict[str, Any], state_path: P
     for key, payload in list(previous_active.items()):
         if key in active_alert_keys:
             continue
-        if settings.critical.critical_alerts.get("notify_resolution", False) and settings.telegram.enabled and settings.telegram.bot_token and settings.telegram.chat_id:
+        if settings.critical.critical_alerts.get("notify_resolution", False) and notifications_configured(settings):
             recovery = CriticalAlert(
                 key=key,
                 container=str(payload.get("container", key)),
@@ -235,8 +235,8 @@ def run_critical_monitor(settings, monitor_config: dict[str, Any], state_path: P
                 first_seen=payload.get("first_seen"),
                 last_seen=payload.get("last_seen"),
             )
-            result = send_message(settings.telegram.api_base_url, settings.telegram.bot_token, settings.telegram.chat_id, format_recovery_message(recovery), settings.telegram.thread_id)
-            recovery_alerts.append({"key": key, "ok": result.ok, "status_code": result.status_code})
+            results = notify(settings, "✅ SurvDocker - Service rétabli", format_recovery_message(recovery))
+            recovery_alerts.append({"key": key, "ok": all(r.ok for r in results), "results": [r.__dict__ for r in results]})
         state.get("active_alerts", {}).pop(key, None)
         state.setdefault("resolved_alerts", {})[key] = {"resolved_at": now.isoformat(), **payload}
     for alert in alerts:
@@ -249,10 +249,10 @@ def run_critical_monitor(settings, monitor_config: dict[str, Any], state_path: P
                 previous = None
             if previous and now - previous < timedelta(seconds=cooldown_seconds):
                 continue
-        if settings.telegram.enabled and settings.telegram.bot_token and settings.telegram.chat_id:
+        if notifications_configured(settings):
             message = format_alert_message(alert, "https://survdocker.denisflamant.com")
-            result = send_message(settings.telegram.api_base_url, settings.telegram.bot_token, settings.telegram.chat_id, message, settings.telegram.thread_id)
-            sent_alerts.append({"key": alert.key, "ok": result.ok, "status_code": result.status_code})
+            results = notify(settings, "🚨 SurvDocker - Alerte critique", message)
+            sent_alerts.append({"key": alert.key, "ok": all(r.ok for r in results), "results": [r.__dict__ for r in results]})
             state.setdefault("active_alerts", {})[alert.key] = {"last_sent_at": now.isoformat(), "container": alert.container, "alert_type": alert.alert_type, "first_seen": alert.first_seen, "last_seen": alert.last_seen}
     save_json(state_path, state)
     return {"status": "ok", "alerts": [alert.__dict__ for alert in alerts], "sent": sent_alerts, "resolved": recovery_alerts}

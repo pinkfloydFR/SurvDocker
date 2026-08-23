@@ -10,8 +10,8 @@ from .analyzer import format_report_copy, report_summary
 from .config import load_settings
 from .loki import LokiClient
 from .scan import compute_period, run_scan
+from .notifications import notifications_configured, notify
 from .storage import latest_report_path, list_reports, load_report
-from .telegram import send_message
 
 
 def _format_datetime(value: str | None) -> str:
@@ -40,6 +40,7 @@ def create_app() -> Flask:
             "scan_state": scan_state.get("status", "unknown"),
             "scan_timestamp": scan_state.get("timestamp"),
             "telegram_enabled": settings.telegram.enabled,
+            "apprise_enabled": settings.apprise.enabled,
         }), 200
 
     @app.get("/")
@@ -123,13 +124,15 @@ def create_app() -> Flask:
     def test_alert():
         if request.headers.get("X-SurvDocker-Token") != settings.scan_token:
             abort(403)
-        if not settings.telegram.enabled or not settings.telegram.bot_token or not settings.telegram.chat_id:
-            return jsonify({"ok": False, "message": "Telegram non configuré (TELEGRAM_ENABLED/BOT_TOKEN/CHAT_ID)."}), 400
+        if not notifications_configured(settings):
+            return jsonify({"ok": False, "message": "Aucun canal de notification configuré (Telegram ou Apprise)."}), 400
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        text = f"🔔 Test d'alerte SurvDocker — {now} UTC. Si tu reçois ce message, les alertes Telegram fonctionnent."
-        result = send_message(settings.telegram.api_base_url, settings.telegram.bot_token, settings.telegram.chat_id, text, settings.telegram.thread_id)
-        return jsonify({"ok": result.ok, "status_code": result.status_code, "message": result.message}), (200 if result.ok else 502)
+        text = f"🔔 Test d'alerte SurvDocker — {now} UTC. Si tu reçois ce message, les alertes fonctionnent."
+        results = notify(settings, "SurvDocker - Test d'alerte", text)
+        ok = all(r.ok for r in results)
+        message = ", ".join(f"{r.channel}: {'ok' if r.ok else r.message}" for r in results)
+        return jsonify({"ok": ok, "results": [r.__dict__ for r in results], "message": message}), (200 if ok else 502)
 
     @app.post("/scan-now")
     def scan_now():
