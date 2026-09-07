@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from survdocker.analyzer import LogEntry, build_report, copyable_text, group_entries
+from survdocker.analyzer import LogEntry, build_export, build_report, copyable_text, group_entries
 
 
 def test_grouping_and_top_results():
@@ -28,3 +28,30 @@ def test_examples_limit_and_copy_text():
     copied = copyable_text(group)
     assert "Container: bookstack" in copied
     assert "Original lines:" in copied
+
+
+def test_build_export_ranks_by_total_occurrences_across_reports():
+    week1 = build_report(
+        [
+            LogEntry("bookstack", "error one", datetime(2026, 8, 10, 6, 0, tzinfo=timezone.utc)),
+            LogEntry("bookstack", "error one", datetime(2026, 8, 10, 6, 1, tzinfo=timezone.utc)),
+            LogEntry("traefik", "warning deprecated config", datetime(2026, 8, 10, 6, 2, tzinfo=timezone.utc)),
+        ]
+    )
+    week2 = build_report(
+        [
+            LogEntry("bookstack", "error one", datetime(2026, 8, 17, 6, 0, tzinfo=timezone.utc)),
+            LogEntry("bookstack", "error one", datetime(2026, 8, 17, 6, 1, tzinfo=timezone.utc)),
+            LogEntry("bookstack", "error one", datetime(2026, 8, 17, 6, 2, tzinfo=timezone.utc)),
+        ]
+    )
+    export = build_export([("report-2026-08-17", week2), ("report-2026-08-10", week1)])
+
+    assert export["source_reports"] == ["report-2026-08-17", "report-2026-08-10"]
+    top = export["problems"][0]
+    assert top["container"] == "bookstack"
+    assert top["total_occurrences"] == 5
+    assert top["report_count"] == 2
+    assert top["first_seen"] == "2026-08-10T06:00:00+00:00"
+    assert top["last_seen"] == "2026-08-17T06:02:00+00:00"
+    assert export["problems"][1]["container"] == "traefik"

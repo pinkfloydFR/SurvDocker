@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Thread
 
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
-from .analyzer import format_report_copy, report_summary
+from .analyzer import build_export, format_report_copy, report_summary
 from .config import load_settings
 from .loki import LokiClient
 from .scan import compute_period, run_scan
@@ -74,6 +75,23 @@ def create_app() -> Flask:
             payload = load_report(path) or {}
             available.append({"path": path.name, "report": payload, "summary": report_summary(payload)})
         return render_template("reports.html", reports=available)
+
+    @app.get("/export.json")
+    def export_json():
+        named_reports = [
+            (path.stem, report)
+            for path in list_reports(settings.data_dir)
+            if (report := load_report(path)) is not None
+        ]
+        if not named_reports:
+            abort(404, "Aucun rapport disponible pour l’export.")
+        export = build_export(named_reports)
+        filename = f"survdocker-export-{datetime.now(timezone.utc):%Y-%m-%d}.json"
+        return Response(
+            json.dumps(export, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
 
     @app.get("/reports/<report_name>")
     def report_detail(report_name: str):

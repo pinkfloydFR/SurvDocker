@@ -16,6 +16,7 @@
 <body>
   <main>
     <h1>Rapports historiques</h1>
+    <p><a href="/export.json" title="Télécharger un fichier JSON agrégeant tous les rapports conservés, classé par récurrence, à donner à un assistant pour analyse">Exporter tous les rapports pour analyse (JSON agrégé)</a></p>
     {% for item in reports %}
       <article class="item">
         <h2 style="margin-bottom: 8px;">{{ item.path | replace('.json', '') }}</h2>

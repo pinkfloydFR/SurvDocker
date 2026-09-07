@@ -130,3 +130,57 @@ def format_report_copy(group: dict, report: dict) -> str:
     period_text = f"{period.get('start')} -> {period.get('end')}" if period else None
     return copyable_text(group, report_period=period_text)
 
+
+def build_export(named_reports: Iterable[tuple[str, dict]], max_examples: int = 20) -> dict:
+    """Aggregate several persisted reports into one file ranked by total recurrence.
+
+    Meant to be handed to an external reader (e.g. an LLM) to spot the problems that
+    keep coming back across scans, not just within a single report's window.
+    """
+    aggregated: dict[tuple[str, str], dict] = {}
+    report_names: list[str] = []
+    for name, report in named_reports:
+        report_names.append(name)
+        for container in report.get("containers", []):
+            cname = container.get("name")
+            for group in container.get("error_groups", []):
+                key = (cname, group.get("normalized_message"))
+                entry = aggregated.get(key)
+                if entry is None:
+                    entry = {
+                        "container": cname,
+                        "level": group.get("level"),
+                        "normalized_message": group.get("normalized_message"),
+                        "total_occurrences": 0,
+                        "first_seen": None,
+                        "last_seen": None,
+                        "seen_in_reports": [],
+                        "examples": [],
+                    }
+                    aggregated[key] = entry
+                entry["total_occurrences"] += group.get("occurrences", 0)
+                if group.get("level") in {"fatal", "error"} and entry["level"] == "warning":
+                    entry["level"] = group["level"]
+                first_seen, last_seen = group.get("first_seen"), group.get("last_seen")
+                if first_seen and (entry["first_seen"] is None or first_seen < entry["first_seen"]):
+                    entry["first_seen"] = first_seen
+                if last_seen and (entry["last_seen"] is None or last_seen > entry["last_seen"]):
+                    entry["last_seen"] = last_seen
+                entry["seen_in_reports"].append(name)
+                for example in group.get("examples", []):
+                    if len(entry["examples"]) < max_examples and example not in entry["examples"]:
+                        entry["examples"].append(example)
+
+    ranked = sorted(
+        aggregated.values(),
+        key=lambda item: (-item["total_occurrences"], item["container"], item["normalized_message"]),
+    )
+    for item in ranked:
+        item["report_count"] = len(item["seen_in_reports"])
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source_reports": report_names,
+        "problems": ranked,
+    }
+
