@@ -135,12 +135,25 @@ def build_export(named_reports: Iterable[tuple[str, dict]], max_examples: int = 
     """Aggregate several persisted reports into one file ranked by total recurrence.
 
     Meant to be handed to an external reader (e.g. an LLM) to spot the problems that
-    keep coming back across scans, not just within a single report's window.
+    keep coming back across scans, not just within a single report's window. Only
+    problems still present in the most recent report are kept: `named_reports` must
+    be ordered newest first, and anything already fixed (absent from that newest
+    report) is dropped, even though it still contributes to the history of the
+    problems that remain. This keeps the export from re-surfacing issues that were
+    already fixed in a previous session.
     """
+    named_reports = list(named_reports)
+    current_keys: set[tuple[str, str]] | None = None
     aggregated: dict[tuple[str, str], dict] = {}
     report_names: list[str] = []
     for name, report in named_reports:
         report_names.append(name)
+        if current_keys is None:
+            current_keys = {
+                (container.get("name"), group.get("normalized_message"))
+                for container in report.get("containers", [])
+                for group in container.get("error_groups", [])
+            }
         for container in report.get("containers", []):
             cname = container.get("name")
             for group in container.get("error_groups", []):
@@ -171,8 +184,11 @@ def build_export(named_reports: Iterable[tuple[str, dict]], max_examples: int = 
                     if len(entry["examples"]) < max_examples and example not in entry["examples"]:
                         entry["examples"].append(example)
 
+    still_present = [
+        entry for key, entry in aggregated.items() if key in (current_keys or set())
+    ]
     ranked = sorted(
-        aggregated.values(),
+        still_present,
         key=lambda item: (-item["total_occurrences"], item["container"], item["normalized_message"]),
     )
     for item in ranked:

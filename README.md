@@ -28,7 +28,7 @@ Le site web écoute sur `0.0.0.0:60000` dans le conteneur et expose les routes `
 
 Cliquer sur le nom d’un conteneur dans le tableau de bord ouvre `/containers/<nom>/logs` dans un nouvel onglet : cette page interroge Loki en direct et propose un menu déroulant pour filtrer par période (période du rapport, 5 minutes, 1 heure, 24h, 48h, ou toutes les données conservées).
 
-Le bouton « Exporter pour analyse » (ou `/export.json` directement) télécharge un fichier JSON qui agrège tous les rapports conservés (`scan.retention_reports`) : pour chaque couple conteneur/motif d’erreur, il donne le nombre total d’occurrences, la première et la dernière apparition, dans combien de rapports il est réapparu, et des exemples de lignes brutes, classés du problème le plus récurrent au moins récurrent. Ce fichier est pensé pour être donné tel quel à un assistant (Claude ou autre) afin d’identifier les problèmes qui reviennent le plus souvent.
+Le bouton « Exporter pour analyse » (ou `/export.json` directement) télécharge un fichier JSON qui ne liste que les problèmes encore présents dans le dernier rapport (un motif corrigé disparaît donc automatiquement de l’export dès le scan suivant), mais enrichit chacun avec son historique sur les rapports conservés (`scan.retention_reports`) : nombre total d’occurrences, première et dernière apparition, dans combien de rapports il est réapparu, et des exemples de lignes brutes, classés du problème le plus récurrent au moins récurrent. Ce fichier est pensé pour être donné tel quel à un assistant (Claude ou autre) afin d’identifier les problèmes qui reviennent le plus souvent, sans ressasser ceux déjà corrigés.
 
 ## Fichiers de configuration
 
