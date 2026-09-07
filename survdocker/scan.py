@@ -40,6 +40,27 @@ def compute_period(now: datetime, lookback: str, timezone_name: str) -> tuple[da
     return start.astimezone(timezone.utc), localized_now.astimezone(timezone.utc)
 
 
+def _next_page_start_ns(page: list, current_start_ns: int) -> int | None:
+    """Cursor for the next query_range page: one nanosecond past the latest
+    timestamp seen in this page. Loki's query_range `limit` is a single cap
+    over the whole [start, end] range, so a query spanning several days of
+    high-volume logs can hit that cap within the first hour and silently
+    never return anything newer - paging by timestamp instead of doing one
+    shot keeps the full period covered regardless of volume.
+    """
+    latest_ns = None
+    for entry in page:
+        if entry.timestamp is None:
+            continue
+        entry_ns = int(entry.timestamp.timestamp() * 1_000_000_000)
+        if latest_ns is None or entry_ns > latest_ns:
+            latest_ns = entry_ns
+    if latest_ns is None:
+        return None
+    next_start_ns = latest_ns + 1
+    return next_start_ns if next_start_ns > current_start_ns else None
+
+
 def run_scan(settings, report_date: str | None = None) -> ScanResult:
     filter_config = FilterConfig.from_settings(settings)
     now = datetime.now(timezone.utc)
@@ -56,16 +77,28 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
 
     try:
         client = LokiClient(settings.loki.base_url, timeout_seconds=settings.loki.query_timeout_seconds, query_limit=settings.loki.query_limit)
-        raw_entries = client.query_range(default_query(settings.loki.job_label), int(start.timestamp() * 1_000_000_000), int(end.timestamp() * 1_000_000_000))
+        query = default_query(settings.loki.job_label)
+        end_ns = int(end.timestamp() * 1_000_000_000)
+        current_start_ns = int(start.timestamp() * 1_000_000_000)
         entries: list[LogEntry] = []
         per_container_counts: dict[str, int] = {}
-        for entry in raw_entries:
-            container_name = entry.container or "unknown"
-            per_container_counts.setdefault(container_name, 0)
-            if per_container_counts[container_name] >= settings.scan.max_log_lines_per_container:
-                continue
-            per_container_counts[container_name] += 1
-            entries.append(LogEntry(container=container_name, raw=entry.raw, timestamp=entry.timestamp))
+        while current_start_ns < end_ns:
+            page = client.query_range(query, current_start_ns, end_ns)
+            if not page:
+                break
+            for entry in page:
+                container_name = entry.container or "unknown"
+                per_container_counts.setdefault(container_name, 0)
+                if per_container_counts[container_name] >= settings.scan.max_log_lines_per_container:
+                    continue
+                per_container_counts[container_name] += 1
+                entries.append(LogEntry(container=container_name, raw=entry.raw, timestamp=entry.timestamp))
+            if len(page) < settings.loki.query_limit:
+                break
+            next_start_ns = _next_page_start_ns(page, current_start_ns)
+            if next_start_ns is None:
+                break
+            current_start_ns = next_start_ns
         report = build_report(entries, config=filter_config, max_groups_per_container=settings.scan.max_error_groups_per_container, max_examples=settings.scan.max_examples_per_error)
         report["scanned_container_count"] = len(per_container_counts)
         report["generated_at"] = now.isoformat()

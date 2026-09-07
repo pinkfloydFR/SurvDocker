@@ -22,7 +22,7 @@ services:
   alloy:
     image: grafana/alloy:latest
     container_name: survdocker_alloy
-    command: run /etc/alloy/config.alloy
+    command: run --disable-reporting --storage.path=/var/lib/alloy /etc/alloy/config.alloy
     restart: unless-stopped
     volumes:
       - ${SURVDOCKER_SYSTEM_CONFIG_DIR}/alloy.alloy:/etc/alloy/config.alloy:ro

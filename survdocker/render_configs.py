@@ -90,6 +90,9 @@ def render_loki_config(settings, output_dir: str = "survdocker/system") -> str:
 # Retention: {settings.loki.retention_days} day(s)
 auth_enabled: false
 
+analytics:
+  reporting_enabled: false
+
 server:
   http_listen_port: 3100
   grpc_server_max_recv_msg_size: 67108864
@@ -118,6 +121,7 @@ schema_config:
 
 limits_config:
   retention_period: {retention_hours}h
+  reject_old_samples_max_age: {retention_hours}h
   max_query_length: 0
   max_streams_per_user: 0
   max_entries_limit_per_query: {settings.loki.query_limit}
