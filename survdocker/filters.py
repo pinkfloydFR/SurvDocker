@@ -86,7 +86,7 @@ def should_keep_line(line: str, config: FilterConfig | None = None) -> bool:
     ignore_patterns = config.ignore_patterns if config.enable_default_ignore else []
     keep_patterns = config.keep_patterns if config.enable_default_keep else []
     warning_patterns = config.warning_patterns if config.enable_default_warning else []
-    if _matches_any(ignore_patterns, line) and not _matches_any(keep_patterns, line):
+    if _matches_any(ignore_patterns, line):
         return False
     return _matches_any(keep_patterns + warning_patterns, line)
 

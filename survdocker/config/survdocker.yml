@@ -38,6 +38,8 @@ filters:
     - '/ping'
     - 'Access to .* is not authorized'
     - 'unauthorized'
+    - 'ip .* is banned'
+    - 'GeoBlock: .* API timeout'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'
