@@ -36,11 +36,24 @@ def _format_datetime(value: str | datetime | None) -> str:
     return parsed.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _is_today(value: str | datetime | None) -> bool:
+    if not value:
+        return False
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return False
+    now = datetime.now(value.tzinfo) if value.tzinfo else datetime.now()
+    return value.date() == now.date()
+
+
 def create_app() -> Flask:
     settings = load_settings()
     app = Flask(__name__, template_folder=str(Path(__file__).with_name("templates")))
     app.config["SURVDOCKER_SETTINGS"] = settings
     app.jinja_env.filters["format_datetime"] = _format_datetime
+    app.jinja_env.filters["is_today"] = _is_today
 
     @app.get("/health")
     def health() -> tuple[dict, int]:

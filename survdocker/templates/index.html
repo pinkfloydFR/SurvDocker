@@ -98,6 +98,7 @@
     .back-to-top:hover { transform: translateY(-2px); }
     .back-to-top svg { width: 20px; height: 20px; }
     .copied { position: absolute; top: 15px; right: 48px; color: var(--good); font-weight: 700; font-size: .84rem; display: none; }
+    .last-seen-today { color: var(--good); font-weight: 700; }
     .empty { padding: 20px; color: var(--muted); }
     .scan-progress { display: none; flex: 1 1 100%; margin-top: 10px; }
     .scan-progress.active { display: block; }
@@ -163,7 +164,7 @@
               <div class="group">
                 <div class="meta">
                   <div><strong>Première apparition :</strong> {{ group.first_seen | format_datetime }}</div>
-                  <div><strong>Dernière apparition :</strong> {{ group.last_seen | format_datetime }}</div>
+                  <div><strong>Dernière apparition :</strong> <span class="{{ 'last-seen-today' if group.last_seen | is_today else '' }}">{{ group.last_seen | format_datetime }}</span></div>
                   <div><strong>Exemples :</strong> {{ group.examples | length }}</div>
                   <div><strong>Complet :</strong> {{ 'oui' if group.examples_complete else 'échantillon' }}</div>
                   <div class="meta-level">Niveau {{ group.level }} · {{ group.occurrences }} occurrence(s)</div>
