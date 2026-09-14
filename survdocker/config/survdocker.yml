@@ -80,6 +80,10 @@ filters:
     - 'SourcePlayingFinished:.*\(SourceError\)'
     # Expected self-signed internal CA, not a certificate problem.
     - 'CA certificate ca\.pem is self signed'
+    # Werkzeug's dev-server banner (flagged as a warning-level line by our
+    # own classifier, and by any container running a Python dev server),
+    # not an actionable configuration issue.
+    - 'This is a development server\. Do not use it in a production deployment'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'
