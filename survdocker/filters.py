@@ -38,6 +38,36 @@ DEFAULT_KEEP_PATTERNS = [
 
 DEFAULT_WARNING_PATTERNS = [r"deprecated", r"warning", r"invalid configuration", r"unknown field"]
 
+_EXPLICIT_LEVEL_RE = re.compile(r'\blevel="?(\w+)"?', re.IGNORECASE)
+_EXPLICIT_LEVEL_MAP = {
+    "fatal": "fatal",
+    "panic": "fatal",
+    "crit": "fatal",
+    "critical": "fatal",
+    "error": "error",
+    "err": "error",
+    "warn": "warning",
+    "warning": "warning",
+    "info": "unknown",
+    "informational": "unknown",
+    "debug": "unknown",
+    "trace": "unknown",
+}
+
+
+def _explicit_level(line: str) -> str | None:
+    """Read an explicit structured `level=` field (e.g. Alloy/Loki's own Go
+    logs) and map it to a report level. Keyword search over the raw line
+    otherwise misclassifies negated phrasing like `level=info msg="node
+    exited without error"` as an error just because "error" appears as a
+    substring. Returns None when there is no recognizable explicit level, so
+    callers fall back to the keyword heuristics below.
+    """
+    match = _EXPLICIT_LEVEL_RE.search(line)
+    if not match:
+        return None
+    return _EXPLICIT_LEVEL_MAP.get(match.group(1).lower())
+
 
 @dataclass
 class FilterConfig:
@@ -84,15 +114,25 @@ def _matches_any(patterns: Iterable[str], line: str) -> bool:
 def should_keep_line(line: str, config: FilterConfig | None = None) -> bool:
     config = config or FilterConfig()
     ignore_patterns = config.ignore_patterns if config.enable_default_ignore else []
-    keep_patterns = config.keep_patterns if config.enable_default_keep else []
-    warning_patterns = config.warning_patterns if config.enable_default_warning else []
     if _matches_any(ignore_patterns, line):
         return False
+    explicit_level = _explicit_level(line)
+    if explicit_level == "unknown":
+        # An explicit level=info/debug/trace field is a stronger signal than a
+        # keyword substring match (e.g. "error" inside "without error").
+        return False
+    if explicit_level in ("fatal", "error", "warning"):
+        return True
+    keep_patterns = config.keep_patterns if config.enable_default_keep else []
+    warning_patterns = config.warning_patterns if config.enable_default_warning else []
     return _matches_any(keep_patterns + warning_patterns, line)
 
 
 def classify_level(line: str, config: FilterConfig | None = None) -> str:
     config = config or FilterConfig()
+    explicit_level = _explicit_level(line)
+    if explicit_level is not None:
+        return explicit_level
     if re.search(r"fatal|panic", line, re.IGNORECASE):
         return "fatal"
     if re.search(r"error|failed|failure|exception|connection refused|timeout|permission denied|database locked|out of memory|crashed", line, re.IGNORECASE):
