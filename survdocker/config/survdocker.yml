@@ -70,6 +70,16 @@ filters:
     # youtubedl failing on a given video (unavailable, geo-blocked, etc.) is
     # routine and not a SurvDocker-worthy incident.
     - 'Failed to download'
+    # AgentDVR keyword false positives: these are routine startup/state-dump
+    # logging (a config value read at boot, and the periodic source
+    # running/cooldown state cycle), not actual errors - they only get
+    # classified as such because "timeout" / "error=True" / "SourceError"
+    # appear as field names or values inside the dump, not as a real fault.
+    - 'SetManualOptions:.*set timeout='
+    - 'SetState:.*error=(True|False)'
+    - 'SourcePlayingFinished:.*\(SourceError\)'
+    # Expected self-signed internal CA, not a certificate problem.
+    - 'CA certificate ca\.pem is self signed'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'
