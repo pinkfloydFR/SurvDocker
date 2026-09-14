@@ -22,12 +22,12 @@ DEFAULT_IGNORE_PATTERNS = [
 
 DEFAULT_KEEP_PATTERNS = [
     r"error",
-    r"fatal",
+    r"\bfatal\b",
     r"panic",
     r"exception",
     r"failed",
     r"failure",
-    r"timeout",
+    r"\btimeout\b",
     r"connection refused",
     r"permission denied",
     r"database locked",
@@ -38,7 +38,7 @@ DEFAULT_KEEP_PATTERNS = [
 
 DEFAULT_WARNING_PATTERNS = [r"deprecated", r"warning", r"invalid configuration", r"unknown field"]
 
-_EXPLICIT_LEVEL_RE = re.compile(r'\blevel="?(\w+)"?', re.IGNORECASE)
+_EXPLICIT_LEVEL_RE = re.compile(r'(?:\blevel=|"level"\s*:\s*)"?(\w+)"?', re.IGNORECASE)
 _EXPLICIT_LEVEL_MAP = {
     "fatal": "fatal",
     "panic": "fatal",
@@ -133,9 +133,9 @@ def classify_level(line: str, config: FilterConfig | None = None) -> str:
     explicit_level = _explicit_level(line)
     if explicit_level is not None:
         return explicit_level
-    if re.search(r"fatal|panic", line, re.IGNORECASE):
+    if re.search(r"\bfatal\b|panic", line, re.IGNORECASE):
         return "fatal"
-    if re.search(r"error|failed|failure|exception|connection refused|timeout|permission denied|database locked|out of memory|crashed", line, re.IGNORECASE):
+    if re.search(r"error|failed|failure|exception|connection refused|\btimeout\b|permission denied|database locked|out of memory|crashed", line, re.IGNORECASE):
         return "error"
     warning_patterns = config.warning_patterns if config.enable_default_warning else []
     if _matches_any(warning_patterns, line):

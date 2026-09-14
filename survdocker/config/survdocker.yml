@@ -52,15 +52,30 @@ filters:
     # Benign race: Alloy tries to read logs for a container that was already
     # removed between discovery and tailing.
     - 'could not fetch logs for container.*dead or marked for removal'
+    # fail2ban telling you an IP it just tried to (re-)ban was already
+    # banned - expected under a repeated intrusion attempt, not an incident.
+    - 'already banned'
+    # Container entrypoint housekeeping on restart, not an application error.
+    - '\[container-init\] Detected Container that has been restarted'
+    # gunicorn recycling a worker after --max-requests (apprise), normal operation.
+    - 'Autorestarting worker after current request'
+    # OpenVPN's periodic keepalive-triggered reconnect (gluetun) - distinct
+    # from an actual AUTH_FAILED, which stays visible.
+    - 'SIGUSR1\[soft,ping-restart\]'
+    # OpenVPN/gluetun route table cleanup at (re)connect time - routinely
+    # logged as an "error" even though the tunnel comes up fine afterwards.
+    - 'RTNETLINK answers: Operation not permitted'
+    - 'Linux route delete command failed'
+    - 'Linux ip addr del failed'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'
-    - 'fatal'
+    - '\bfatal\b'
     - 'panic'
     - 'exception'
     - 'failed'
     - 'failure'
-    - 'timeout'
+    - '\btimeout\b'
     - 'connection refused'
     - 'permission denied'
     - 'database locked'
