@@ -40,6 +40,18 @@ filters:
     - 'unauthorized'
     - 'ip .* is banned'
     - 'GeoBlock: .* API timeout'
+    # Alloy replaying a long-lived container's full Docker log history on
+    # first discovery (or after losing its position file) and Loki correctly
+    # rejecting entries older than reject_old_samples_max_age. Harmless -
+    # those entries are outside the report's lookback window anyway - but
+    # without this it shows up as a recurring false "incident" on the
+    # survdocker_alloy/survdocker_loki containers themselves.
+    - 'entry too far behind'
+    - 'has timestamp too old'
+    - 'entry for stream .* has timestamp too old'
+    # Benign race: Alloy tries to read logs for a container that was already
+    # removed between discovery and tailing.
+    - 'could not fetch logs for container.*dead or marked for removal'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'
