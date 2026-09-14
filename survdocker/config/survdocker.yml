@@ -67,6 +67,9 @@ filters:
     - 'RTNETLINK answers: Operation not permitted'
     - 'Linux route delete command failed'
     - 'Linux ip addr del failed'
+    # youtubedl failing on a given video (unavailable, geo-blocked, etc.) is
+    # routine and not a SurvDocker-worthy incident.
+    - 'Failed to download'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'
