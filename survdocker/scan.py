@@ -82,8 +82,21 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
         current_start_ns = int(start.timestamp() * 1_000_000_000)
         entries: list[LogEntry] = []
         per_container_counts: dict[str, int] = {}
+        had_any_page = False
+        partial_error: str | None = None
         while current_start_ns < end_ns:
-            page = client.query_range(query, current_start_ns, end_ns)
+            try:
+                page = client.query_range(query, current_start_ns, end_ns)
+            except Exception as exc:
+                # A single failed page (e.g. a client-side timeout while Loki is
+                # under load) must not discard every entry already fetched from
+                # earlier pages - only bail out completely if the very first
+                # page never succeeded, since that means Loki itself is down.
+                if not had_any_page:
+                    raise
+                partial_error = str(exc)
+                break
+            had_any_page = True
             if not page:
                 break
             for entry in page:
@@ -103,11 +116,20 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
         report["scanned_container_count"] = len(per_container_counts)
         report["generated_at"] = now.isoformat()
         report["period"] = {"start": start.isoformat(), "end": end.isoformat()}
-        report["state"] = "ok"
         report["source"] = {"loki": settings.loki.base_url, "query": default_query(settings.loki.job_label)}
+        status = "ok"
+        if partial_error is not None:
+            report["state"] = "partial"
+            report["error"] = partial_error
+            status = "partial"
+        else:
+            report["state"] = "ok"
         path = save_report(settings.data_dir, report, report_date, retention_reports=settings.scan.retention_reports)
-        save_json(settings.data_dir / "last-scan.json", {"status": "ok", "report_path": str(path), "timestamp": now.isoformat()})
-        return ScanResult(report=report, report_path=path, status="ok", message="scan completed")
+        last_scan = {"status": status, "report_path": str(path), "timestamp": now.isoformat()}
+        if partial_error is not None:
+            last_scan["error"] = partial_error
+        save_json(settings.data_dir / "last-scan.json", last_scan)
+        return ScanResult(report=report, report_path=path, status=status, message="scan completed" if status == "ok" else f"scan completed with partial data: {partial_error}")
     except Exception as exc:
         report = dict(report_meta)
         report["state"] = "loki_unavailable"
