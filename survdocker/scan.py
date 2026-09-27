@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from .analyzer import LogEntry, build_report
 from .filters import FilterConfig
 from .loki import LokiClient, default_query
+from .normalize import strip_ansi
 from .storage import save_report, load_json, save_json
 
 
@@ -105,7 +106,7 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
                 if per_container_counts[container_name] >= settings.scan.max_log_lines_per_container:
                     continue
                 per_container_counts[container_name] += 1
-                entries.append(LogEntry(container=container_name, raw=entry.raw, timestamp=entry.timestamp))
+                entries.append(LogEntry(container=container_name, raw=strip_ansi(entry.raw), timestamp=entry.timestamp))
             if len(page) < settings.loki.query_limit:
                 break
             next_start_ns = _next_page_start_ns(page, current_start_ns)

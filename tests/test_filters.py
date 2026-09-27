@@ -1,4 +1,4 @@
-from survdocker.filters import FilterConfig, classify_level, should_keep_line
+from survdocker.filters import FilterConfig, _explicit_level, classify_level, should_keep_line
 
 
 def test_authelia_noise_is_filtered():
@@ -75,6 +75,11 @@ def test_known_operational_noise_is_ignored():
         '2026-09-08T10:18:51+02:00 ERROR [openvpn] RTNETLINK answers: Operation not permitted',
         '2026-09-08T10:18:51+02:00 ERROR [openvpn] Linux route delete command failed',
         '2026-09-08T10:18:51+02:00 INFO [openvpn] Linux ip addr del failed: external program exited with error status: 2',
+        'logger=authn.service t=2026-09-25T16:51:20.950868733+02:00 level=warn msg="Failed to authenticate request" client=auth.client.session error="user token not found"',
+        'logger=middleware.gzip t=2026-09-26T18:06:50.616661581+02:00 level=warn msg="Failed to write gzipped response" path=/public/fonts/inter/Inter-Regular.woff2 error="http: request method or response status code does not allow body"',
+        'logger=plugins.dedupe t=2026-09-26T17:41:52+02:00 level=warn msg="Skipping loading of plugin as it\'s a duplicate" pluginId=zipkin',
+        'time=2026-09-23T05:50:09.244Z level=WARN source=main.go:1249 msg="Received an OS signal, exiting gracefully..." signal=terminated',
+        '[2026-09-27 00:33:47] [WARNING] 8478 parsing errors',
     ]
     for line in noisy_lines:
         assert should_keep_line(line, config) is False, line
@@ -82,3 +87,44 @@ def test_known_operational_noise_is_ignored():
     # A real VPN credential failure must stay visible - distinct from the
     # benign ping-restart reconnect above.
     assert should_keep_line("2026-09-08T10:18:41+02:00 ERROR [openvpn] AUTH: Received control message: AUTH_FAILED", config) is True
+
+
+def test_bracketed_python_logging_level_is_used():
+    # crowdsec-blocklist-import: a [WARNING] line must not become an error just
+    # because "failed" appears in the message.
+    line = '[2026-09-24 13:07:11] [WARNING] Machine heartbeat failed: 401 {"code":401,"message":"signature is invalid"}'
+    assert classify_level(line) == "warning"
+    assert classify_level("[2026-09-20 06:46:00] [ERROR] Failed to push metrics to localhost:9091") == "error"
+    assert should_keep_line("[2026-09-26 00:31:07] [INFO] Found 169935 existing decisions, 0 failed") is False
+
+
+def test_leading_info_prefix_beats_keyword_in_url():
+    # GeoBlock logs every evaluated request at INFO; "warning" only appears in
+    # the requested file name.
+    line = "INFO: GeoBlock: 2026/09/20 09:37:49 my-geoblock@file: evaluating client IP(s) [192.168.0.254] for [proxmox.example.com/icon-warning.png]"
+    assert classify_level(line) == "unknown"
+    assert should_keep_line(line) is False
+
+
+def test_zerolog_console_level_with_ansi_colors():
+    err = "\x1b[2m10:49AM\x1b[0m \x1b[91mERR\x1b[0m \x1b[2msablier/instance_request.go:166\x1b[0m async instance start failed"
+    assert classify_level(err) == "error"
+    info = "\x1b[2m10:49AM\x1b[0m \x1b[32mINF\x1b[0m instance stopped, previous start failed"
+    assert should_keep_line(info) is False
+    assert classify_level("2026-09-20T09:37:49+02:00 WRN deprecated option") == "warning"
+
+
+def test_other_prefix_level_formats():
+    assert classify_level("1:M 22 Sep 2026 02:31:23.530 * <bf> \t{ bf-error-rate       :      0.01 }") == "unknown"
+    assert classify_level("1:M 23 Sep 2026 05:51:44.382 # Warning: no config file specified") == "warning"
+    assert classify_level("2026-09-26 06:57:33,001 - root                             (734ccebb0b30) :  INFO (get_providers:1) - Throttling error") == "unknown"
+    assert classify_level("2026-09-23  7:51:57 0 [Warning] mariadbd: io_uring_queue_init() failed") == "warning"
+    assert classify_level("[Warn] HttpClient: HTTP Error - Res: HTTP/1.1 [GET]") == "warning"
+    assert classify_level("[Fri Sep 25 07:35:31.260579 2026] [php:warn] [pid 17:tid 17] PHP Warning") == "warning"
+    assert classify_level("2026/09/24 08:07:14 [error] 25#25: client intended to send too large body") == "error"
+    assert classify_level("2026-09-23 05:50:22.633 UTC [100577] FATAL:  terminating connection") == "fatal"
+
+
+def test_uppercase_word_later_in_message_is_not_a_level():
+    line = "request to backend a b c d returned ERROR code"
+    assert _explicit_level(line) is None

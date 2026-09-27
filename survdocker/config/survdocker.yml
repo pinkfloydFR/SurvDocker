@@ -84,6 +84,38 @@ filters:
     # own classifier, and by any container running a Python dev server),
     # not an actionable configuration issue.
     - 'This is a development server\. Do not use it in a production deployment'
+    # Grafana: expired/rotated browser session (user just gets re-prompted),
+    # 304 responses to cached assets, and bundled plugins that are also
+    # installed - all routine, not faults.
+    - 'Failed to authenticate request.*(user token not found|token needs to be rotated)'
+    - 'Failed to write gzipped response.*does not allow body'
+    - 'Skipping loading of plugin as it''s a duplicate'
+    # Prometheus acknowledging a normal stop/restart.
+    - 'Received an OS signal, exiting gracefully'
+    # crowdsec-blocklist-import: summary of feed lines that are not IPs
+    # (URLhaus hostnames, DShield table headers...) - skipped by design.
+    - '\[WARNING\] \d+ parsing errors'
+    # Startup/config chatter that repeats on every restart and needs no action.
+    - 'pruner-loop: scheduling pruning every'
+    - 'io_uring_queue_init\(\) failed with EPERM'
+    - 'create_uring failed: falling back to libaio'
+    - 'Supervisord is running as root|self\.warnings\.warn\('
+    - 'ExperimentalWarning: WASI is an experimental feature|node --trace-warnings'
+    - 'Failed to initialize DRI3 extension|mieq: warning: overriding existing handler'
+    - '\.conf already exists and will be overriden'
+    - 'no usable system locales were found'
+    - 'initdb: warning: enabling "trust" authentication'
+    - 'Worker \(pid:\d+\) was sent SIGINT'
+    - "exists! \\(not copying the YOURLS version"
+    # docker buildx builder container warnings emitted on each build.
+    - 'only the default worker can be used|failed check for fsverity support|skipping containerd worker|using host network as the default'
+    # Fragments of multi-line object dumps whose only "error"/"warning" is a
+    # field name (prowlarr JSON, portabase pg client dump) - the actual
+    # exception line of the same dump stays visible.
+    - '"isWarning": false'
+    - '"errorMessage": "Query successful, but no results'
+    - '_connectionError: false'
+    - '_events: \[Object: null prototype\] \{ error: \[Function'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'

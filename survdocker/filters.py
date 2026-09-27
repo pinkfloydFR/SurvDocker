@@ -7,6 +7,8 @@ from typing import Iterable
 
 import yaml
 
+from .normalize import strip_ansi
+
 
 DEFAULT_IGNORE_PATTERNS = [
     r"status_code=(200|204|301|302|401)",
@@ -39,7 +41,43 @@ DEFAULT_KEEP_PATTERNS = [
 DEFAULT_WARNING_PATTERNS = [r"deprecated", r"warning", r"invalid configuration", r"unknown field"]
 
 _EXPLICIT_LEVEL_RE = re.compile(r'(?:\blevel=|"level"\s*:\s*)"?(\w+)"?', re.IGNORECASE)
+# Level written as a line prefix rather than a `level=` field. Only the first
+# few tokens are looked at, so a message body mentioning "error" is not
+# mistaken for a level. Tried in order:
+_PREFIX_LEVEL_RES = [
+    # Redis: `1:M 22 Sep 2026 02:31:23.530 * ...` (`.` debug, `-` verbose,
+    # `*` notice, `#` warning).
+    re.compile(r"^\d+:[MSCX] \d{1,2} \w{3} \d{4} [\d:.]+ ([.*#-]) "),
+    # Bazarr: `2026-09-26 06:57:33,001 - root   (734ccebb0b30) :  INFO (...`
+    re.compile(r"^\S+ \S+ - \S+\s+\(\w+\)\s*:\s+(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b"),
+    # Bracketed, any case, optionally `module:level`: `[...] [WARNING]` (Python
+    # logging), `[...] [12266] [INFO]` (gunicorn), `[Warn]` (*arr),
+    # `2026-09-23  7:51:57 0 [Warning]` (MariaDB), `[error]` (nginx),
+    # `[php:warn]` (Apache).
+    re.compile(
+        r"^(?:\S+\s+){0,4}?\[(?:[\w-]+:)?(trace|trc|debug|dbg|info|inf|note|notice|warning|warn|wrn|error|err|critical|crit|fatal|ftl|panic)\]",
+        re.IGNORECASE,
+    ),
+    # Bare uppercase word: `INFO: GeoBlock: ...` (Traefik plugins),
+    # `10:49AM ERR ...` (zerolog console: Traefik, Sablier), `... ERROR [openvpn]`
+    # (gluetun), `UTC [pid] FATAL:` (Postgres).
+    re.compile(
+        r"^(?:\S+\s+){0,4}?(TRACE|TRC|DEBUG|DBG|INFO|INF|NOTICE|WARNING|WARN|WRN|ERROR|ERR|CRITICAL|CRIT|FATAL|FTL|PANIC|PNC):?(?:\s|$)"
+    ),
+]
 _EXPLICIT_LEVEL_MAP = {
+    ".": "unknown",
+    "-": "unknown",
+    "*": "unknown",
+    "#": "warning",
+    "note": "unknown",
+    "trc": "unknown",
+    "dbg": "unknown",
+    "inf": "unknown",
+    "notice": "unknown",
+    "wrn": "warning",
+    "ftl": "fatal",
+    "pnc": "fatal",
     "fatal": "fatal",
     "panic": "fatal",
     "crit": "fatal",
@@ -64,9 +102,16 @@ def _explicit_level(line: str) -> str | None:
     callers fall back to the keyword heuristics below.
     """
     match = _EXPLICIT_LEVEL_RE.search(line)
-    if not match:
-        return None
-    return _EXPLICIT_LEVEL_MAP.get(match.group(1).lower())
+    if match:
+        level = _EXPLICIT_LEVEL_MAP.get(match.group(1).lower())
+        if level is not None:
+            return level
+    line = strip_ansi(line)
+    for pattern in _PREFIX_LEVEL_RES:
+        match = pattern.match(line)
+        if match:
+            return _EXPLICIT_LEVEL_MAP.get(match.group(1).lower())
+    return None
 
 
 @dataclass

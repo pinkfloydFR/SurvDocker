@@ -15,8 +15,18 @@ NORMALIZATION_RULES = [
 ]
 
 
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+
+
+def strip_ansi(text: str) -> str:
+    """Remove terminal color codes (zerolog console output from Sablier,
+    Traefik...), which otherwise show up as `[2m`/`[91m` garbage in the
+    report and split one recurring error into several patterns."""
+    return _ANSI_ESCAPE_RE.sub("", text)
+
+
 def normalize_message(message: str) -> str:
-    normalized = message.strip()
+    normalized = strip_ansi(message).strip()
     for pattern, replacement in NORMALIZATION_RULES:
         if callable(replacement):
             normalized = pattern.sub(replacement, normalized)
