@@ -126,6 +126,14 @@ limits_config:
   max_streams_per_user: 0
   max_entries_limit_per_query: {settings.loki.query_limit}
 
+compactor:
+  working_directory: /loki/compactor
+  # Without this, limits_config.retention_period is never enforced and Loki keeps everything.
+  retention_enabled: true
+  delete_request_store: filesystem
+  compaction_interval: 10m
+  retention_delete_delay: 2h
+
 query_range:
   results_cache:
     cache:
