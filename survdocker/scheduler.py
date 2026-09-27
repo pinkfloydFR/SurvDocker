@@ -32,14 +32,17 @@ def compute_next_run(now: datetime, day: int, schedule_time: str, timezone_name:
 
 
 def scheduler_loop(settings, stop_callback=None) -> None:
+    # The target is computed once and kept until the scan has run: recomputing it on each
+    # iteration would push it one week ahead as soon as the scheduled time has just passed.
+    plan = compute_next_run(datetime.now(timezone.utc), settings.scan.day, settings.scan.time, settings.scan.timezone)
     while True:
         now = datetime.now(timezone.utc)
         save_json(settings.data_dir / "scheduler-heartbeat.json", {"timestamp": now.isoformat()})
-        plan = compute_next_run(now, settings.scan.day, settings.scan.time, settings.scan.timezone)
-        wait_seconds = max(0.0, (plan.next_run_utc - now).total_seconds())
-        if wait_seconds:
+        wait_seconds = (plan.next_run_utc - now).total_seconds()
+        if wait_seconds > 0:
             time_module.sleep(min(wait_seconds, 60.0))
             continue
         run_scan(settings)
         if stop_callback and stop_callback():
             return
+        plan = compute_next_run(datetime.now(timezone.utc), settings.scan.day, settings.scan.time, settings.scan.timezone)
