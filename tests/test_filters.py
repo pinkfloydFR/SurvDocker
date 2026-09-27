@@ -80,6 +80,20 @@ def test_known_operational_noise_is_ignored():
         'logger=plugins.dedupe t=2026-09-26T17:41:52+02:00 level=warn msg="Skipping loading of plugin as it\'s a duplicate" pluginId=zipkin',
         'time=2026-09-23T05:50:09.244Z level=WARN source=main.go:1249 msg="Received an OS signal, exiting gracefully..." signal=terminated',
         '[2026-09-27 00:33:47] [WARNING] 8478 parsing errors',
+        # continuation lines of multi-line dumps
+        '            "dns error",',
+        '    "severity": "error"',
+        '  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app',
+        '|   └── Read timeout: 3s',
+        '[2026-09-21 15:19:20.461][vaultwarden::api::icons][WARN] Unable to download icon: Req.',
+        '[CAUSE] reqwest::Error {',
+        'dnsmasq[7]: reply error is SERVFAIL',
+        'dnsmasq[7]: forwarded error-report.com to 1.1.1.1',
+        '2026/09/24 08:07:14 [warn] 25#25: *10 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/1, client: 1.2.3.4',
+        "2026-09-26 18:59:12,015 CRIT Server 'unix_http_server' running without any HTTP authentication checking",
+        "[Warn] Torznab: Indexer Torrent9 (Prowlarr) rss sync didn't cover the period between 09/25/2026 10:00:00 and 09/25/2026 11:00:00",
+        '\x1b[2;36m[09/20/26 20:09:00]\x1b[0m\x1b[2;36m \x1b[0m\x1b[33mWARNING \x1b[0m Worker \x1b[1m(\x1b[0mpi\x1b[1;92md:3395\x1b[0m5\x1b[1m)\x1b[0m was sent SIGINT!',
+        'ts=2026-09-23T05:50:22.76Z level=warn msg="could not transfer logs" component=tailer err="http: read on closed response body"',
     ]
     for line in noisy_lines:
         assert should_keep_line(line, config) is False, line
@@ -87,6 +101,8 @@ def test_known_operational_noise_is_ignored():
     # A real VPN credential failure must stay visible - distinct from the
     # benign ping-restart reconnect above.
     assert should_keep_line("2026-09-08T10:18:41+02:00 ERROR [openvpn] AUTH: Received control message: AUTH_FAILED", config) is True
+    # The head line of a multi-line error stays visible.
+    assert should_keep_line("OSError: [Errno 16] Resource busy: '/_DLARR/_download/file.zip'", config) is True
 
 
 def test_bracketed_python_logging_level_is_used():
@@ -123,8 +139,37 @@ def test_other_prefix_level_formats():
     assert classify_level("[Fri Sep 25 07:35:31.260579 2026] [php:warn] [pid 17:tid 17] PHP Warning") == "warning"
     assert classify_level("2026/09/24 08:07:14 [error] 25#25: client intended to send too large body") == "error"
     assert classify_level("2026-09-23 05:50:22.633 UTC [100577] FATAL:  terminating connection") == "fatal"
+    assert classify_level("[2026-09-21 15:19:19.454][response][INFO] (icon_internal) GET /icons/x/icon.png => 200 OK, failed=0") == "unknown"
 
 
 def test_uppercase_word_later_in_message_is_not_a_level():
     line = "request to backend a b c d returned ERROR code"
     assert _explicit_level(line) is None
+
+
+def test_loki_line_filter_is_a_plain_literal_superset():
+    from survdocker.filters import loki_line_filter
+
+    line_filter = loki_line_filter(FilterConfig())
+    assert line_filter.startswith("(?i)")
+    literals = line_filter[4:].split("|")
+    # \b dropped, redundant "error" folded into "err", level tokens present.
+    assert "timeout" in literals and "fatal" in literals and "err" in literals and "wrn" in literals
+    assert "error" not in literals
+    import re
+    assert not any(re.search(r"[\\.^$*+?()\[\]{}]", lit) for lit in literals)
+    # Every line the Python filters keep must also pass the Loki pre-filter.
+    for line in [
+        "10:49AM ERR sablier/instance_request.go:166 async instance start failed",
+        "1:M 23 Sep 2026 05:51:44.382 # Warning: No config file specified",
+        "2026-09-23 05:50:22.633 UTC [100577] FATAL:  terminating connection",
+        "[2026-09-20 06:31:55] WRN relay auth",
+    ]:
+        assert should_keep_line(line)
+        assert re.search(line_filter, line), line
+
+
+def test_loki_line_filter_disabled_for_regex_patterns():
+    from survdocker.filters import loki_line_filter
+
+    assert loki_line_filter(FilterConfig(keep_patterns=[r"conn(ection)? reset"])) is None

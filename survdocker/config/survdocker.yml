@@ -116,6 +116,42 @@ filters:
     - '"errorMessage": "Query successful, but no results'
     - '_connectionError: false'
     - '_events: \[Object: null prototype\] \{ error: \[Function'
+    # Continuation lines of multi-line output (stack frames, pretty-printed
+    # error structs, JSON bodies, gluetun's settings tree). Each one would
+    # otherwise become its own group and push the head line of the same error
+    # (non-indented: `OSError: ...`, `ModuleNotFoundError: ...`) out of the
+    # per-container group limit.
+    - '^\s+\S'
+    - '^[|│├└]'
+    # Vaultwarden failing to fetch a website favicon, and the `[CAUSE]` head
+    # of the reqwest error dump that follows each of those lines.
+    - 'Unable to download icon'
+    - '^\[CAUSE\] reqwest::Error \{\s*$'
+    # dnsmasq query log (log-queries): one line per DNS lookup, where domain
+    # names like error-report.com or an upstream SERVFAIL reply look like errors.
+    - 'dnsmasq\[\d+\]: (query\[\w+\]|forwarded|reply|cached|config) '
+    # nginx spilling a large request/response body to disk - normal behaviour.
+    - 'is buffered to a temporary file'
+    # supervisord (Euro-Office) startup notice and normal stop sequence.
+    - "CRIT Server 'unix_http_server' running without any HTTP authentication checking"
+    - 'WARN received SIGTERM indicating exit request'
+    - 'WARN stopped: .* \(terminated by SIGTERM\)'
+    # MariaDB entrypoint probing cgroup files it cannot write in a container.
+    - '\[Entrypoint\]: .* not writable, functionality unavailable to MariaDB'
+    # *arr: public-tracker RSS feeds shorter than the sync interval, and
+    # Prowlarr skipping an indexer with no results in the configured categories.
+    - "rss sync didn't cover the period between"
+    - 'No Results in configured categories'
+    # termix UI session bookkeeping.
+    - 'No WebSocket available for host key verification prompt'
+    - 'Tab instance has live session, skipping duplicate create'
+    # CrowdSec noticing a machine (blocklist importer) came back with a new
+    # container IP after being recreated.
+    - "new IP address detected for machine '.*'"
+    # Alloy losing its Docker log stream while the Docker daemon restarts, or
+    # inspecting a container that was just removed (same race as above).
+    - 'could not transfer logs.*(use of closed network connection|read on closed response body)'
+    - 'could not inspect container info.*No such container'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'

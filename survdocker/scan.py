@@ -6,7 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .analyzer import LogEntry, build_report
-from .filters import FilterConfig
+from .filters import FilterConfig, loki_line_filter
 from .loki import LokiClient, default_query
 from .normalize import strip_ansi
 from .storage import save_report, load_json, save_json
@@ -78,7 +78,7 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
 
     try:
         client = LokiClient(settings.loki.base_url, timeout_seconds=settings.loki.query_timeout_seconds, query_limit=settings.loki.query_limit)
-        query = default_query(settings.loki.job_label)
+        query = default_query(settings.loki.job_label, loki_line_filter(filter_config))
         end_ns = int(end.timestamp() * 1_000_000_000)
         current_start_ns = int(start.timestamp() * 1_000_000_000)
         entries: list[LogEntry] = []
@@ -117,7 +117,7 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
         report["scanned_container_count"] = len(per_container_counts)
         report["generated_at"] = now.isoformat()
         report["period"] = {"start": start.isoformat(), "end": end.isoformat()}
-        report["source"] = {"loki": settings.loki.base_url, "query": default_query(settings.loki.job_label)}
+        report["source"] = {"loki": settings.loki.base_url, "query": query}
         status = "ok"
         if partial_error is not None:
             report["state"] = "partial"

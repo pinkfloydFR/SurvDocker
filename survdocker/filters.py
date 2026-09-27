@@ -48,6 +48,8 @@ _PREFIX_LEVEL_RES = [
     # Redis: `1:M 22 Sep 2026 02:31:23.530 * ...` (`.` debug, `-` verbose,
     # `*` notice, `#` warning).
     re.compile(r"^\d+:[MSCX] \d{1,2} \w{3} \d{4} [\d:.]+ ([.*#-]) "),
+    # Vaultwarden: `[2026-09-21 15:19:20.461][vaultwarden::api::icons][WARN] ...`
+    re.compile(r"^\[[^\]]+\]\[[^\]]+\]\[(TRACE|DEBUG|INFO|WARN|ERROR)\]"),
     # Bazarr: `2026-09-26 06:57:33,001 - root   (734ccebb0b30) :  INFO (...`
     re.compile(r"^\S+ \S+ - \S+\s+\(\w+\)\s*:\s+(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b"),
     # Bracketed, any case, optionally `module:level`: `[...] [WARNING]` (Python
@@ -158,6 +160,7 @@ def _matches_any(patterns: Iterable[str], line: str) -> bool:
 
 def should_keep_line(line: str, config: FilterConfig | None = None) -> bool:
     config = config or FilterConfig()
+    line = strip_ansi(line)
     ignore_patterns = config.ignore_patterns if config.enable_default_ignore else []
     if _matches_any(ignore_patterns, line):
         return False
@@ -175,6 +178,7 @@ def should_keep_line(line: str, config: FilterConfig | None = None) -> bool:
 
 def classify_level(line: str, config: FilterConfig | None = None) -> str:
     config = config or FilterConfig()
+    line = strip_ansi(line)
     explicit_level = _explicit_level(line)
     if explicit_level is not None:
         return explicit_level
@@ -186,3 +190,40 @@ def classify_level(line: str, config: FilterConfig | None = None) -> str:
     if _matches_any(warning_patterns, line):
         return "warning"
     return "unknown"
+
+
+# Substrings of every explicit level `should_keep_line` keeps (error/err,
+# warn/warning/wrn, fatal/ftl, panic/pnc, crit/critical), so the Loki-side
+# pre-filter never drops a line the Python filters would keep.
+_LOKI_LEVEL_TOKENS = ["err", "warn", "wrn", "fatal", "ftl", "panic", "pnc", "crit"]
+
+
+def loki_line_filter(config: FilterConfig | None = None) -> str | None:
+    """Case-insensitive LogQL `|~` filter keeping only lines which could pass
+    `should_keep_line`. Noisy containers (Traefik, CrowdSec, dnsmasq...) log
+    hundreds of thousands of info lines a week; without this every one is
+    downloaded and the per-container line cap is reached within hours, so the
+    rest of the week is never analyzed.
+
+    Loki only runs `(?i)a|b|c` fast when every alternative is a plain literal
+    (it turns them into substring matches); `\\b` or groups make it fall back
+    to full regex evaluation, which times out over a week of logs. So `\\b`
+    is dropped - matching a superset is fine, the Python filters still decide -
+    and None is returned (no pre-filter) if a pattern has any other regex
+    syntax.
+    """
+    config = config or FilterConfig()
+    patterns = list(_LOKI_LEVEL_TOKENS)
+    if config.enable_default_keep:
+        patterns += config.keep_patterns
+    if config.enable_default_warning:
+        patterns += config.warning_patterns
+    literals: list[str] = []
+    for pattern in patterns:
+        literal = pattern.replace(r"\b", "").lower()
+        if not literal or re.search(r"[\\.^$*+?()\[\]{}|`]", literal):
+            return None
+        literals.append(literal)
+    # A literal containing a shorter one ("error" / "err") is redundant.
+    kept = sorted({lit for lit in literals if not any(other != lit and other in lit for other in literals)})
+    return "(?i)" + "|".join(kept)

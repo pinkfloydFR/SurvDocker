@@ -71,5 +71,8 @@ class LokiClient:
         return entries
 
 
-def default_query(job_label: str) -> str:
-    return f'{{job="{job_label}"}}'
+def default_query(job_label: str, line_filter: str | None = None) -> str:
+    query = f'{{job="{job_label}"}}'
+    if line_filter:
+        query += f" |~ `{line_filter}`"
+    return query

@@ -24,3 +24,7 @@ def test_parse_loki_response_reads_container_labels():
     assert len(entries) == 1
     assert entries[0].container == "traefik"
     assert entries[0].timestamp == datetime.fromtimestamp(1720000000, tz=timezone.utc)
+
+
+def test_default_query_appends_line_filter():
+    assert default_query("docker", "(?i)err|warn") == '{job="docker"} |~ `(?i)err|warn`'
