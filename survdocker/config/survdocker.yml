@@ -120,6 +120,8 @@ critical:
     - redis_pf
     - postgres
     - mariadb
+    - rust_hbbs
+    - rust_hbbr
   # Thresholds and cooldown values for Telegram alerting.
   critical_alerts:
     enabled: true
@@ -137,3 +139,8 @@ critical:
       - authelia_redis_df
     bookstack:
       - mariadb
+
+# Loki storage retention (applied by Loki's compactor). Also bounds the "all"
+# range of the container log viewer.
+loki:
+  retention_days: 15
