@@ -178,7 +178,8 @@ def test_loki_line_filter_disabled_for_regex_patterns():
 def test_docker_generated_names_are_detected():
     from survdocker.filters import is_docker_generated_name
 
-    for name in ["goofy_herschel", "frosty_kepler", "lucid_tu", "sweet_turing2", "survdocker-survdocker-run-669e9ccf4c5a"]:
-        assert is_docker_generated_name(name)
-    for name in ["rust_hbbr", "nextcloud_db", "survdocker_loki", "authelia_df", "gluetun_nordvpn", "AREP-front", "qcm-picker-web-1"]:
+    assert is_docker_generated_name("survdocker-survdocker-run-669e9ccf4c5a")
+    # Names shaped like `docker run`'s "<adjective>_<surname>" are kept: a
+    # container named by hand can look exactly the same.
+    for name in ["goofy_herschel", "happy_test", "denis-test", "rust_hbbr", "nextcloud_db", "survdocker_loki", "authelia_df", "gluetun_nordvpn", "AREP-front", "qcm-picker-web-1"]:
         assert not is_docker_generated_name(name)
