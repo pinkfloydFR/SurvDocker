@@ -83,7 +83,6 @@ services:
       - traefik.http.routers.survdocker.service=survdocker
       - traefik.http.routers.survdocker.tls=true
       - traefik.http.routers.survdocker.middlewares=${TRAEFIK_AUTH_MIDDLEWARE}
-      - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
       - traefik.http.services.survdocker.loadbalancer.server.port=60000
 
   survdocker-scheduler:
