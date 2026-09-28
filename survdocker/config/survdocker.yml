@@ -152,6 +152,73 @@ filters:
     # inspecting a container that was just removed (same race as above).
     - 'could not transfer logs.*(use of closed network connection|read on closed response body)'
     - 'could not inspect container info.*No such container'
+    # A client (SurvDocker, Grafana, the log viewer) closing its connection
+    # before Loki finished the query, Loki's startup before its ring is
+    # ready, and Grafana stopping its jobs on shutdown.
+    - '(err|error)="(rpc error: code = Canceled desc = )?context canceled"'
+    - 'error notifying scheduler about finished query" err=EOF'
+    - 'error getting ingester clients" err="empty ring"'
+    # Normal stop/restart sequences: gluetun, CrowdSec, and Postgres cutting
+    # its clients (and the clients reporting it) when the database restarts.
+    - 'Caught OS signal terminated, shutting down'
+    - 'goroutine shutdown timed out'
+    - 'Crowdsec service shutting down|SIGTERM received, shutting down'
+    - 'terminating connection due to administrator command'
+    # Default-config notices repeated at every start, nothing to fix.
+    - 'No config file specified, using the default config'
+    - 'You need to use --log-bin to make'
+    - 'differs from the latest version of this image'
+    - 'declares no Identification and can never be matched to a device'
+    - 'The WebRootPath was not found'
+    - 'No XML encryptor configured'
+    - 'skipped registering status sub-resource that does not support dual writing'
+    - 'Failed to send usage stats'
+    - 'listening on .* without --ui-auth-file or --allowed-hosts'
+    - 'Compression for receiving enabled'
+    - 'WSGI app sent body bytes on a no-body response'
+    - 'Live notification stream connection timeout'
+    # Remote sites / indexers / feeds that are down, rate-limited or reject
+    # the request: outside our control, and the *arr apps retry by themselves.
+    - '429\.TooManyRequests'
+    - 'Indexer is disabled till'
+    - 'API Request Limit reached for'
+    - 'server is currently unavailable\. .* Http request timed out'
+    - 'Failed to read complete http response'
+    - '\[http proxy\] cannot process request for client'
+    - 'Could not reach the target: Page\.goto'
+    - 'WARNING:\s+Failed https?:\S+ in [\d.]+s'
+    - 'Bruteforce Blocker: unavailable'
+    - 'sending signal to central API: .* Request Too Long'
+    - '\[mod-init\] .*(No response from lscr\.io|OFFLINE: )'
+    - 'retry\.api .* retrying in \d+ seconds'
+    # Bazarr losing its SignalR link while Sonarr restarts; it reconnects.
+    - 'SignalR client for \w+ connection as been lost'
+    # Clients and scanners: expired sessions, stale clients, slow clients,
+    # unknown logins, bad RustDesk keys, requests to denied paths.
+    - 'vaultwarden::api::icons\]\[WARN\] Blocked address'
+    - 'UnsupportedCertVersion'
+    - 'The client copy of this cipher is out of date'
+    - 'vaultwarden::api::notifications\]\[ERROR\] Invalid token'
+    - 'vaultwarden::auth\]\[ERROR\] Token has expired'
+    - 'Request timeout occurred while handling request from client'
+    - 'error authenticating user .*not found'
+    - 'Authentication failed from .* - invalid key'
+    - 'AH0(1797|1630): client denied by server configuration'
+    - 'WebSocket pong timeout - terminating zombie connection'
+    # Dockhand checking updates for locally built images, which exist in no
+    # registry.
+    - '\[Registry\] .*: 401$'
+    # Secondary lines of an error already reported by its head line:
+    # Python traceback chaining, AgentDVR's retry notice after the DNS error,
+    # Sablier failing to stop an instance Docker already removed, and the
+    # crowdsec-blocklist-import banner framing its own warning.
+    - '^During handling of the above exception, another exception occurred'
+    - '^The above exception was the direct cause of the following exception'
+    - 'Will retry ObjectRecognition in \d+ seconds'
+    - 'instance expired could not be stopped from provider.*No such container'
+    - '\[WARNING\] !{10,}\s*$'
+    # CrowdSec's hub Traefik parser choking on an empty message field.
+    - 'failed to run filter: unexpected end of JSON input'
   # Signals that should generally be preserved as incidents.
   keep_patterns:
     - 'error'

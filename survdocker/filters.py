@@ -25,9 +25,14 @@ stoic strange stupefied suspicious sweet tender thirsty trusting unruffled upbea
 wizardly wonderful xenodochial youthful zealous zen
 """.split())
 _DOCKER_GENERATED_NAME = re.compile(r"([a-z]+)_[a-z]+\d*")
+# `docker compose run <service>` names its one-off container
+# "<project>-<service>-run-<12 hex>" - same kind of throwaway container.
+_COMPOSE_RUN_NAME = re.compile(r".+-run-[0-9a-f]{12}")
 
 
 def is_docker_generated_name(container_name: str) -> bool:
+    if _COMPOSE_RUN_NAME.fullmatch(container_name):
+        return True
     match = _DOCKER_GENERATED_NAME.fullmatch(container_name)
     return bool(match) and match.group(1) in DOCKER_GENERATED_NAME_ADJECTIVES
 
