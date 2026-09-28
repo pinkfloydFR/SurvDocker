@@ -37,6 +37,18 @@ class ErrorGroup:
             self.examples_complete = False
 
 
+# Some errors embed a whole HTTP response body (a block page, YouTube's error
+# page...), which makes the report unreadable. Lines are kept whole for
+# grouping, and only cut down in the persisted report.
+MAX_DISPLAY_CHARS = 500
+
+
+def truncate_for_display(text: str, limit: int = MAX_DISPLAY_CHARS) -> str:
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}… [+{len(text) - limit} caractères]"
+
+
 def detect_level(message: str, config: FilterConfig | None = None) -> str:
     return classify_level(message, config)
 
@@ -79,11 +91,11 @@ def build_report(entries: Iterable[LogEntry], config: FilterConfig | None = None
                     {
                         "container": group.container,
                         "level": group.level,
-                        "normalized_message": group.normalized_message,
+                        "normalized_message": truncate_for_display(group.normalized_message),
                         "occurrences": group.occurrences,
                         "first_seen": group.first_seen.isoformat() if group.first_seen else None,
                         "last_seen": group.last_seen.isoformat() if group.last_seen else None,
-                        "examples": list(group.examples),
+                        "examples": [truncate_for_display(example) for example in group.examples],
                         "examples_complete": group.examples_complete,
                     }
                     for group in groups

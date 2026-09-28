@@ -30,6 +30,21 @@ def test_examples_limit_and_copy_text():
     assert "Original lines:" in copied
 
 
+def test_report_truncates_long_lines_but_groups_on_full_text():
+    body = "x" * 1000
+    entries = [
+        LogEntry("portabase-agent", f"ERROR ping_server: status: 403, body: {body}a"),
+        LogEntry("portabase-agent", f"ERROR ping_server: status: 403, body: {body}b"),
+    ]
+    report = build_report(entries)
+    groups = report["containers"][0]["error_groups"]
+    assert len(groups) == 2
+    for group in groups:
+        assert len(group["normalized_message"]) < 600
+        assert group["normalized_message"].endswith("caractères]")
+        assert len(group["examples"][0]) < 600
+
+
 def test_build_export_ranks_by_total_occurrences_across_reports():
     week1 = build_report(
         [
