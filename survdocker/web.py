@@ -7,7 +7,7 @@ from threading import Thread
 
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
-from .analyzer import build_export, format_report_copy, report_summary
+from .analyzer import build_export, format_container_copy, format_report_copy, report_summary
 from .config import load_settings
 from .loki import LokiClient
 from .scan import compute_period, run_scan
@@ -79,6 +79,7 @@ def create_app() -> Flask:
             reports=list_reports(settings.data_dir),
             settings=settings,
             format_report_copy=format_report_copy,
+            format_container_copy=format_container_copy,
         )
 
     @app.get("/reports")

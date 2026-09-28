@@ -68,6 +68,9 @@
     .container-card.c4 { border-left-color: #e5534b; background: rgba(229, 83, 75, 0.06); }
     .container-card.c5 { border-left-color: #2fb8c6; background: rgba(47, 184, 198, 0.06); }
     .container-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 14px; }
+    .container-tools { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .btn-small { padding: 6px 12px; font-size: .84rem; }
+    .copied.copied-inline { position: static; }
     .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .84rem; background: rgba(91, 155, 213, 0.14); color: var(--accent); }
     .container-link { color: inherit; text-decoration: none; border-bottom: 1px dashed var(--muted); }
     .container-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
@@ -158,7 +161,11 @@
               <div>
                 <h2 style="margin-bottom: 4px;"><a class="container-link" href="/containers/{{ container.name | urlencode }}/logs?start={{ report.period.start | urlencode }}&amp;end={{ report.period.end | urlencode }}" target="_blank" rel="noopener" title="Ouvrir le log complet de ce conteneur">{{ container.name }}</a></h2>
               </div>
-              <div class="badge">{{ container.error_groups | length }} motifs</div>
+              <div class="container-tools">
+                <span class="copied copied-inline">Copié !</span>
+                <button class="btn btn-secondary btn-small" type="button" data-copy='{{ format_container_copy(container, report) | tojson }}' title="Copier toutes les erreurs de ce conteneur dans un format prêt à coller à un assistant pour analyse">Copy All</button>
+                <div class="badge">{{ container.error_groups | length }} motifs</div>
+              </div>
             </div>
             {% for group in container.error_groups %}
               <div class="group">

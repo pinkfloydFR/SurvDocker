@@ -112,6 +112,41 @@ def copyable_text(group: dict, report_period: str | None = None) -> str:
     return "\n".join(lines)
 
 
+def format_container_copy(container: dict, report: dict) -> str:
+    """Render every error group of one container as a Markdown block meant to be pasted to an assistant.
+
+    Identical example lines are collapsed with a repeat count so a noisy group doesn't bury the others.
+    """
+    period = report.get("period", {})
+    groups = container.get("error_groups", [])
+    lines = [
+        f"## SurvDocker — conteneur `{container.get('name')}`",
+        "",
+        "Analyse ces erreurs de logs Docker, identifie la cause probable et propose une correction.",
+        "",
+        f"- Rapport généré : {report.get('generated_at')}",
+        f"- Période analysée : {period.get('start')} -> {period.get('end')}",
+        f"- Motifs d'erreur distincts : {len(groups)}",
+    ]
+    for index, group in enumerate(groups, start=1):
+        lines += [
+            "",
+            f"### Motif {index} — {group.get('level')} ({group.get('occurrences')} occurrence(s))",
+            f"- Première apparition : {group.get('first_seen')}",
+            f"- Dernière apparition : {group.get('last_seen')}",
+            f"- Motif normalisé : `{group.get('normalized_message')}`",
+        ]
+        if not group.get("examples_complete", True):
+            lines.append("- Exemples : échantillon (liste tronquée)")
+        counts: dict[str, int] = {}
+        for example in group.get("examples", []):
+            counts[example] = counts.get(example, 0) + 1
+        lines += ["", "```"]
+        lines += [f"{example}  [x{count}]" if count > 1 else example for example, count in counts.items()]
+        lines.append("```")
+    return "\n".join(lines)
+
+
 def report_summary(report: dict) -> dict:
     containers = report.get("containers", [])
     total_groups = sum(len(container.get("error_groups", [])) for container in containers)
