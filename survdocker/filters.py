@@ -10,6 +10,28 @@ import yaml
 from .normalize import strip_ansi
 
 
+# Adjectives from Docker's names-generator: a container started without --name
+# (e.g. a throwaway `docker run --rm ...`) is called "<adjective>_<surname>".
+# Such containers are one-off tests, so their logs are left out of the scan.
+DOCKER_GENERATED_NAME_ADJECTIVES = frozenset("""
+admiring adoring affectionate agitated amazing angry awesome beautiful blissful bold boring brave busy
+charming clever compassionate competent condescending confident cool cranky crazy dazzling determined
+distracted dreamy eager ecstatic elastic elated elegant eloquent epic exciting fervent festive flamboyant
+focused friendly frosty funny gallant gifted goofy gracious great happy hardcore heuristic hopeful hungry
+infallible inspiring intelligent interesting jolly jovial keen kind laughing loving lucid magical modest
+musing mystifying naughty nervous nice nifty nostalgic objective optimistic peaceful pedantic pensive
+practical priceless quirky quizzical recursing relaxed reverent romantic sad serene sharp silly sleepy
+stoic strange stupefied suspicious sweet tender thirsty trusting unruffled upbeat vibrant vigilant
+wizardly wonderful xenodochial youthful zealous zen
+""".split())
+_DOCKER_GENERATED_NAME = re.compile(r"([a-z]+)_[a-z]+\d*")
+
+
+def is_docker_generated_name(container_name: str) -> bool:
+    match = _DOCKER_GENERATED_NAME.fullmatch(container_name)
+    return bool(match) and match.group(1) in DOCKER_GENERATED_NAME_ADJECTIVES
+
+
 DEFAULT_IGNORE_PATTERNS = [
     r"status_code=(200|204|301|302|401)",
     r"robots\.txt",

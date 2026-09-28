@@ -173,3 +173,12 @@ def test_loki_line_filter_disabled_for_regex_patterns():
     from survdocker.filters import loki_line_filter
 
     assert loki_line_filter(FilterConfig(keep_patterns=[r"conn(ection)? reset"])) is None
+
+
+def test_docker_generated_names_are_detected():
+    from survdocker.filters import is_docker_generated_name
+
+    for name in ["goofy_herschel", "frosty_kepler", "lucid_tu", "sweet_turing2"]:
+        assert is_docker_generated_name(name)
+    for name in ["rust_hbbr", "nextcloud_db", "survdocker_loki", "authelia_df", "gluetun_nordvpn", "AREP-front"]:
+        assert not is_docker_generated_name(name)

@@ -6,7 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .analyzer import LogEntry, build_report
-from .filters import FilterConfig, loki_line_filter
+from .filters import FilterConfig, is_docker_generated_name, loki_line_filter
 from .loki import LokiClient, default_query
 from .normalize import strip_ansi
 from .storage import save_report, load_json, save_json
@@ -102,6 +102,8 @@ def run_scan(settings, report_date: str | None = None) -> ScanResult:
                 break
             for entry in page:
                 container_name = entry.container or "unknown"
+                if is_docker_generated_name(container_name):
+                    continue
                 per_container_counts.setdefault(container_name, 0)
                 if per_container_counts[container_name] >= settings.scan.max_log_lines_per_container:
                     continue
