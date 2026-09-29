@@ -27,7 +27,6 @@ services:
     volumes:
       - ${SURVDOCKER_SYSTEM_CONFIG_DIR}/alloy.alloy:/etc/alloy/config.alloy:ro
       - ${SURVDOCKER_DATA_DIR}/alloy:/var/lib/alloy
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
     healthcheck:
@@ -39,6 +38,7 @@ services:
       start_period: 15s
     networks:
       - survdocker
+      - socket-proxy
 
   survdocker:
     build: .
@@ -124,10 +124,10 @@ services:
       TELEGRAM_THREAD_ID: ${TELEGRAM_THREAD_ID}
       APPRISE_URL: ${APPRISE_URL}
       APPRISE_TAG: ${APPRISE_TAG}
+      DOCKER_SOCKET_PATH: tcp://socket-proxy:2375
     volumes:
       - ${SURVDOCKER_DATA_DIR}:/data
       - ${SURVDOCKER_CONFIG_DIR}:/app/survdocker/config:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - loki
     healthcheck:
@@ -138,9 +138,13 @@ services:
       start_period: 30s
     networks:
       - survdocker
+      - socket-proxy
 
 networks:
   survdocker:
     name: survdocker
   traefik:
+    external: true
+  socket-proxy:
+    name: socket-proxy
     external: true

@@ -70,8 +70,15 @@ def _connect_unix_http(socket_path: str, method: str, path: str, body: bytes | N
     ]
     request_headers.extend(f"{key}: {value}" for key, value in headers.items())
     request_bytes = ("\r\n".join(request_headers) + "\r\n\r\n").encode("utf-8") + payload
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.connect(socket_path)
+    # socket_path peut être un socket Unix ou un endpoint TCP "tcp://hote:port" (socket-proxy)
+    if socket_path.startswith("tcp://"):
+        host, _, port = socket_path[len("tcp://"):].partition(":")
+        sock_ctx = socket.create_connection((host, int(port or 2375)), timeout=30)
+    else:
+        sock_ctx = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    with sock_ctx as sock:
+        if not socket_path.startswith("tcp://"):
+            sock.connect(socket_path)
         sock.sendall(request_bytes)
         chunks = []
         while True:
@@ -89,7 +96,21 @@ def _connect_unix_http(socket_path: str, method: str, path: str, body: bytes | N
             continue
         key, value = line.split(b":", 1)
         response_headers[key.decode().strip().lower()] = value.decode().strip()
+    if response_headers.get("transfer-encoding", "").lower() == "chunked":
+        body_blob = _decode_chunked(body_blob)
     return status, response_headers, body_blob
+
+
+def _decode_chunked(data: bytes) -> bytes:
+    out = b""
+    while data:
+        size_line, _, rest = data.partition(b"\r\n")
+        size = int(size_line.split(b";")[0] or b"0", 16)
+        if size == 0:
+            break
+        out += rest[:size]
+        data = rest[size + 2:]
+    return out
 
 
 def docker_api_request(socket_path: str, path: str) -> Any:
@@ -103,7 +124,25 @@ def docker_api_request_text(socket_path: str, path: str) -> str:
     status, _, body = _connect_unix_http(socket_path, "GET", path)
     if status >= 400:
         raise RuntimeError(f"Docker API returned HTTP {status}")
-    return body.decode("utf-8", errors="replace")
+    return _demux_docker_stream(body).decode("utf-8", errors="replace")
+
+
+def _demux_docker_stream(data: bytes) -> bytes:
+    """Retire les en-têtes de 8 octets du flux de logs Docker (conteneurs sans TTY).
+
+    Sans ça, les octets nuls des en-têtes se retrouvent dans les alertes et l'API
+    Apprise les rejette (HTTP 400 "Bad FORM Payload"). Un flux TTY (sans en-têtes)
+    est renvoyé tel quel.
+    """
+    out = b""
+    pos = 0
+    while pos < len(data):
+        if len(data) - pos < 8 or data[pos] not in (0, 1, 2) or data[pos + 1:pos + 4] != b"\x00\x00\x00":
+            return data if pos == 0 else out + data[pos:]
+        size = int.from_bytes(data[pos + 4:pos + 8], "big")
+        out += data[pos + 8:pos + 8 + size]
+        pos += 8 + size
+    return out
 
 
 def extract_container_name(container: dict[str, Any]) -> str:

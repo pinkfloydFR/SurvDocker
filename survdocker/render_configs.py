@@ -25,11 +25,11 @@ def render_alloy_config(config_path: str | Path, output_dir: str = "survdocker/d
     
     # Build Alloy config with proper syntax
     alloy_config = """// Generated from survdocker.yml
-// Reads Docker logs through the local socket and pushes them to Loki.
+// Reads Docker logs through the socket-proxy (read-only) and pushes them to Loki.
 // Loki endpoint: http://loki:3100/loki/api/v1/push
 
 discovery.docker "containers" {
-  host = "unix:///var/run/docker.sock"
+  host = "tcp://socket-proxy:2375"
 }
 
 discovery.relabel "containers" {
@@ -43,7 +43,7 @@ discovery.relabel "containers" {
 }
 
 loki.source.docker "containers" {
-  host          = "unix:///var/run/docker.sock"
+  host          = "tcp://socket-proxy:2375"
   targets       = discovery.docker.containers.targets
   relabel_rules = discovery.relabel.containers.rules
   labels        = {"job" = "docker"}
