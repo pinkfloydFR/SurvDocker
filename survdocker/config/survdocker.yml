@@ -251,10 +251,14 @@ critical:
     - traefik
     - authelia_df
     - authelia_pf
-    - redis_df
-    - redis_pf
-    - postgres
-    - mariadb
+    - authelia_redis_df
+    - authelia_redis_pf
+    - immich_postgres
+    - nextcloud_db
+    - plasturgie-db
+    - portabase-pg
+    - sftpgo-db
+    - yourls_db
     - rust_hbbs
     - rust_hbbr
   # Thresholds and cooldown values for Telegram alerting.
