@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 
+from .filters import _matches_any
+from .normalize import strip_ansi
 from .notifications import notifications_configured, notify
 from .storage import load_json, save_json
 
@@ -152,6 +154,16 @@ def extract_container_name(container: dict[str, Any]) -> str:
     return str(container.get("Name") or container.get("Id") or "unknown")
 
 
+def drop_ignored_lines(lines: list[str], ignore_patterns: list[str]) -> list[str]:
+    """Retire les lignes déjà classées comme bruit par filters.ignore_patterns.
+
+    Sans ça, un message bénin (ex. le 408 "Request timeout occurred while
+    handling request from client" d'Authelia, qui contient "i/o timeout")
+    déclenche une alerte de dépendance alors que le rapport l'ignore.
+    """
+    return [line for line in lines if not _matches_any(ignore_patterns, strip_ansi(line))]
+
+
 def detect_dependency_issue(lines: list[str]) -> str | None:
     for line in lines:
         lower = line.lower()
@@ -174,6 +186,7 @@ def build_critical_alerts(config: dict[str, Any], containers: list[dict[str, Any
     ignored_containers = set(config.get("ignored_containers", []))
     dependencies = config.get("dependencies", {})
     critical_rules = config.get("critical_alerts", {})
+    ignore_patterns = list(config.get("ignore_patterns", []))
     alerts: list[CriticalAlert] = []
     present_names = {extract_container_name(container) for container in containers}
     for critical_name in critical_containers:
@@ -187,14 +200,15 @@ def build_critical_alerts(config: dict[str, Any], containers: list[dict[str, Any
         restart_count = int((container.get("RestartCount") or 0))
         status_text = str(container.get("Status") or "")
         lines = logs.get(name, [])[-10:]
-        dependency_line = detect_dependency_issue(lines)
+        dependency_lines = drop_ignored_lines(lines, ignore_patterns)
+        dependency_line = detect_dependency_issue(dependency_lines)
         if name in critical_containers and state in CRITICAL_STATES:
             alerts.append(CriticalAlert(key=f"container={name}|state={state}", container=name, alert_type="critical_state", state=state, reason=status_text or state, last_lines=lines, restart_count=restart_count))
             continue
         if restart_count >= int(critical_rules.get("restart_threshold", 3)) and state == "running":
             alerts.append(CriticalAlert(key=f"container={name}|type=restart_spike", container=name, alert_type="restart_spike", state=state, reason="restart loop suspected", last_lines=lines, restart_count=restart_count))
             continue
-        if dependency_line and count_dependency_matches(lines) >= int(critical_rules.get("error_threshold", 3)) and (name in critical_containers or name in dependencies):
+        if dependency_line and count_dependency_matches(dependency_lines) >= int(critical_rules.get("error_threshold", 3)) and (name in critical_containers or name in dependencies):
             reason = dependency_line
             alerts.append(CriticalAlert(key=f"container={name}|type=dependency", container=name, alert_type="dependency", state=state, reason=reason, last_lines=lines, restart_count=restart_count))
     return alerts
@@ -252,6 +266,7 @@ def run_critical_monitor(settings, monitor_config: dict[str, Any], state_path: P
         "ignored_containers": settings.critical.ignored_containers,
         "critical_alerts": settings.critical.critical_alerts,
         "dependencies": settings.critical.dependencies,
+        "ignore_patterns": settings.filters.ignore_patterns if settings.filters.enable_default_ignore else [],
     }, containers, logs)
     state = load_json(state_path, {"active_alerts": {}})
     sent_alerts: list[dict[str, Any]] = []
