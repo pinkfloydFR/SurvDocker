@@ -44,11 +44,8 @@ survdocker/system/*
 *.swp
 *.swo
 
-# graft's local graph cache — regenerable, not committed (run `graft build`).
+# trail (outil de Claude Code) : réglages, hooks, skill et learnings (.trail/) sont
+# partagés dans le dépôt ; seuls la carte du code (graft/, régénérée par `trail build`)
+# et les réglages personnels de Claude Code restent locaux
 /graft/
-
-# trail (outil de Claude Code) : fichiers locaux, jamais dans le dépôt
-/.claude/
-/.mcp.json
-/.ignore
-/.trail/
+/.claude/settings.local.json
